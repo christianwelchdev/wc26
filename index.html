@@ -1411,15 +1411,16 @@ document.getElementById('modalBg').addEventListener('click',e=>{
 });
 
 /* ================================================================
-   LIVE RESULTS (ESPN public scoreboard) — manual entries override
+   LIVE RESULTS — two sources, manual entries override everything:
+   1) ESPN public scoreboard   2) FIFA official api.fifa.com (v3)
 ================================================================ */
 const TEAM_ALIAS={unitedstates:'usa',turkey:'turkiye',bosniaandherzegovina:'bosniaherzegovina',
   caboverde:'capeverde',capeverdeislands:'capeverde',cotedivoire:'ivorycoast',ivorycoast:'ivorycoast',
-  czechrepublic:'czechia',korearepublic:'southkorea',congodr:'drcongo',
+  czechrepublic:'czechia',korearepublic:'southkorea',congodr:'drcongo',koreadpr:'northkorea',
   democraticrepublicofthecongo:'drcongo',driran:'iran',iriran:'iran'};
 function normT(n){
   if(!n)return'';
-  let x=n.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z]/g,'');
+  let x=String(n).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z]/g,'');
   return TEAM_ALIAS[x]||x;
 }
 const pk=(a,b)=>[normT(a),normT(b)].sort().join('|');
@@ -1430,31 +1431,57 @@ function etKey(iso){                                       // UTC → ET (EDT, U
   return MON[t.getUTCMonth()]+' '+t.getUTCDate();
 }
 
-function applyLive(events){
-  const evs=[];
-  (events||[]).forEach(ev=>{
-    const c=ev.competitions&&ev.competitions[0];if(!c)return;
-    const home=(c.competitors||[]).find(x=>x.homeAway==='home');
-    const away=(c.competitors||[]).find(x=>x.homeAway==='away');
-    if(!home||!away)return;
-    const st=c.status?.type||{};
-    evs.push({
-      hn:normT(home.team?.displayName||home.team?.name),
-      an:normT(away.team?.displayName||away.team?.name),
-      hs:parseInt(home.score)||0,as:parseInt(away.score)||0,
-      hp:home.shootoutScore!=null?parseInt(home.shootoutScore):null,
-      ap:away.shootoutScore!=null?parseInt(away.shootoutScore):null,
-      done:!!st.completed,live:st.state==='in',
-      k:pk(home.team?.displayName||home.team?.name,away.team?.displayName||away.team?.name),
-      dk:etKey(c.date||ev.date)
-    });
+// ── source adapters: each returns rows {hn,an,hs,as,hp,ap,done,live,k,dk} ──
+function espnRows(j){
+  const rows=[];
+  ((j&&j.events)||[]).forEach(ev=>{
+    try{
+      const c=ev.competitions&&ev.competitions[0];if(!c)return;
+      const home=(c.competitors||[]).find(x=>x.homeAway==='home');
+      const away=(c.competitors||[]).find(x=>x.homeAway==='away');
+      if(!home||!away)return;
+      const st=(c.status&&c.status.type)||{};
+      const hn=home.team&&(home.team.displayName||home.team.name);
+      const an=away.team&&(away.team.displayName||away.team.name);
+      rows.push({hn:normT(hn),an:normT(an),
+        hs:parseInt(home.score)||0,as:parseInt(away.score)||0,
+        hp:home.shootoutScore!=null?parseInt(home.shootoutScore):null,
+        ap:away.shootoutScore!=null?parseInt(away.shootoutScore):null,
+        done:!!st.completed,live:st.state==='in',
+        k:pk(hn,an),dk:etKey(c.date||ev.date)});
+    }catch(e){}
   });
+  return rows;
+}
+function fifaRows(j){
+  const rows=[];
+  ((j&&j.Results)||[]).forEach(r=>{
+    try{
+      const H=r.Home,Aw=r.Away;if(!H||!Aw)return;
+      const nm=t=>(t.TeamName&&t.TeamName[0]&&t.TeamName[0].Description)||t.ShortClubName||t.Abbreviation||'';
+      const hn=nm(H),an=nm(Aw);if(!hn||!an)return;
+      // MatchStatus (FIFA v3): 0 = finished, 3 = live; anything else = not started/other
+      const ms=r.MatchStatus;
+      const hp=r.HomeTeamPenaltyScore!=null?parseInt(r.HomeTeamPenaltyScore):null;
+      const ap=r.AwayTeamPenaltyScore!=null?parseInt(r.AwayTeamPenaltyScore):null;
+      rows.push({hn:normT(hn),an:normT(an),
+        hs:H.Score!=null?parseInt(H.Score):0,as:Aw.Score!=null?parseInt(Aw.Score):0,
+        hp:(hp||ap)?hp:null,ap:(hp||ap)?ap:null,
+        done:ms===0,live:ms===3,
+        k:pk(hn,an),dk:etKey(r.Date)});
+    }catch(e){}
+  });
+  return rows;
+}
 
+function applyRows(evs){
   LVP={};
   // group matches: unique team pair within group stage
   GM.forEach(m=>{
     const key=pk(m.h,m.a),dk2=dkey(m.d);
-    const ev=evs.find(e=>e.k===key&&e.dk===dk2)||evs.find(e=>e.k===key);
+    const ev=evs.find(e=>e.k===key&&e.dk===dk2&&e.done)
+           ||evs.find(e=>e.k===key&&e.done)
+           ||evs.find(e=>e.k===key&&e.dk===dk2);
     if(!ev)return;
     const o=normT(m.h)===ev.hn?{s1:ev.hs,s2:ev.as}:{s1:ev.as,s2:ev.hs};
     if(ev.done)LV[m.id]=o;
@@ -1482,17 +1509,23 @@ function applyLive(events){
   saveLive();
 }
 
+async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error(r.status);return r.json();}
+
 async function fetchLive(){
   const pill=document.getElementById('syncPill');
-  try{
-    const u='https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260719&limit=400';
-    const r=await fetch(u);
-    if(!r.ok)throw new Error(r.status);
-    const j=await r.json();
-    applyLive(j.events);
+  const srcs=[];
+  const [esp,fif]=await Promise.allSettled([
+    getJSON('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260719&limit=400'),
+    getJSON('https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&from=2026-06-10T00:00:00Z&to=2026-07-20T23:59:59Z&language=en&count=500')
+  ]);
+  let rows=[];
+  if(esp.status==='fulfilled'){const r=espnRows(esp.value);if(r.length){rows=rows.concat(r);srcs.push('ESPN');}}
+  if(fif.status==='fulfilled'){const r=fifaRows(fif.value);if(r.length){rows=rows.concat(r);srcs.push('FIFA');}}
+  if(rows.length||srcs.length){
+    applyRows(rows);
     renderAll();
-    if(pill)pill.innerHTML='⟳ LIVE · '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-  }catch(e){
+    if(pill)pill.innerHTML='⟳ LIVE · '+(srcs.join('+')||'no source')+' · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  }else{
     if(pill)pill.innerHTML='⟳ OFFLINE · cached results';
   }
 }
