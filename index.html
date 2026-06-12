@@ -252,6 +252,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   border-radius:10px;padding:1px 8px;font-size:9px;letter-spacing:1px;animation:lp 1.4s infinite}
 @keyframes lp{0%,100%{opacity:1}50%{opacity:.45}}
 .gcol-note{font-size:8px;color:#3a3a55;letter-spacing:1px;text-align:center;text-transform:uppercase}
+.mc-score-live{color:#ff7b7b;animation:lp 1.4s infinite}
+.live-tag{color:#ff7b7b;font-weight:700;animation:lp 1.4s infinite}
+.gm-sc-live{color:#ff7b7b !important;border-color:rgba(224,68,68,.4) !important;animation:lp 1.4s infinite}
 .ko-note.show{display:block}
 .modal-btns{display:flex;gap:8px}
 .mbtn{
@@ -862,19 +865,22 @@ const BH=820,CW=148,GW=24,CCW=168;
 
 function mcHTML(m,tag,tagCls=''){
   const hasS=m&&m.s1!=null&&m.s2!=null;
+  const lv=(!hasS&&m&&typeof LVP!=='undefined'&&LVP[m.id])||null;
   const hasP=hasS&&m.p1!=null&&m.p2!=null&&m.s1===m.s2;
   const w1=hasS&&(m.s1>m.s2||(hasP&&m.p1>m.p2));
   const w2=hasS&&(m.s2>m.s1||(hasP&&m.p2>m.p1));
   const isKO=m&&(String(m.id).startsWith('r')||String(m.id).startsWith('q')||String(m.id).startsWith('s')||m.id==='final'||m.id==='bronze');
   const onclick=m?`openModal('${m.id}',${isKO})`:'';
   if(m&&m.mn!=null&&tag.indexOf('·')<0)tag=`${tag} · M${m.mn} · ${(m.d||'').replace(/^\w+ /,'').toUpperCase()}`;
+  if(lv)tag+=' · <span class="live-tag">LIVE</span>';
 
-  const teamRow=(team,slot,score,pen,isW,isL)=>{
+  const teamRow=(team,slot,score,pen,isW,isL,liveSc)=>{
     const cls=isW?'row-win':isL?'row-lose':'';
     const nm=team
       ?`<span class="mc-flag">${fi(team,18)}</span><span class="mc-name">${sn(team)} <span style="color:#4a5a4a;font-size:9px">(${cd(team)})</span></span>`
       :`<span class="mc-flag" style="font-size:9px;color:#3a3a5a;min-width:auto;padding-right:2px">${slot||'TBD'}</span><span class="mc-name mc-tbd"></span>`;
-    const scTxt=score!=null?`${score}${hasP&&pen!=null?`<sup style="font-size:8px;color:#889">${pen}</sup>`:''}`:'';
+    const scTxt=score!=null?`${score}${hasP&&pen!=null?`<sup style="font-size:8px;color:#889">${pen}</sup>`:''}`
+      :(liveSc!=null?`<span class="mc-score-live">${liveSc}</span>`:'');
     return `<div class="mc-row ${cls}">${nm}<span class="mc-score">${scTxt}</span></div>`;
   };
 
@@ -884,8 +890,8 @@ function mcHTML(m,tag,tagCls=''){
 
   return`<div class="mc ${hasS?'mc-scored':''}" id="mc_${m.id}" onclick="${onclick}">
     <div class="mc-tag ${tagCls}">${tag}</div>
-    ${teamRow(m.t1,m.lbl1||m.id,m.s1,m.p1,w1,w2)}
-    ${teamRow(m.t2,m.lbl2||m.id,m.s2,m.p2,w2,w1)}
+    ${teamRow(m.t1,m.lbl1||m.id,m.s1,m.p1,w1,w2,lv?lv.s1:null)}
+    ${teamRow(m.t2,m.lbl2||m.id,m.s2,m.p2,w2,w1,lv?lv.s2:null)}
   </div>`;
 }
 
@@ -1116,12 +1122,13 @@ function renderStandings(){
       <div class="gm-rows">
         ${ms.map(m=>{
           const sc=eff(m.id);const hs=sc&&sc.s1!=null;
+          const lv=(!hs&&LVP[m.id])||null;
           const w1=hs&&sc.s1>sc.s2,w2=hs&&sc.s2>sc.s1;
           return`<div class="gm-row" onclick="openModal('${m.id}',false)">
             <span class="gm-dt">${m.d.replace(/[A-Za-z]+ /,'')} ${m.t}</span>
             <div class="gm-core">
               <span class="gm-team gm-h" style="${w1?'color:#7FFF00':''}">${fi(m.h,16)} ${sn(m.h)} <span style="color:#4a5a4a;font-size:9px">(${cd(m.h)})</span></span>
-              <span class="gm-sc" style="${hs?'background:#0e1a0e;':''}">${hs?`${sc.s1}–${sc.s2}`:'vs'}</span>
+              <span class="gm-sc ${lv?'gm-sc-live':''}" style="${hs?'background:#0e1a0e;':''}">${hs?`${sc.s1}–${sc.s2}`:lv?`${lv.s1}–${lv.s2}`:'vs'}</span>
               <span class="gm-team" style="${w2?'color:#7FFF00':''}">${fi(m.a,16)} ${sn(m.a)} <span style="color:#4a5a4a;font-size:9px">(${cd(m.a)})</span></span>
             </div>
             <span class="gm-vn">${m.v}</span>
@@ -1533,7 +1540,7 @@ async function fetchLive(){
 // Initial render
 renderAll();
 fetchLive();
-setInterval(fetchLive,5*60*1000);   // refresh every 5 minutes
+setInterval(fetchLive,60*1000);   // refresh every 60 seconds
 </script>
 
 
