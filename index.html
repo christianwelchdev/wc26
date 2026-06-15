@@ -311,6 +311,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .ts-live-note{color:#7da7ff;font-size:10px;text-align:center;padding:10px 8px 2px;letter-spacing:.3px}
 .ts-live-tag{display:inline-flex;align-items:center;gap:4px;background:rgba(39,199,111,.15);color:var(--green);font-size:9px;font-weight:700;letter-spacing:1px;padding:3px 7px;border-radius:5px}
 .ts-pen{color:#556;font-size:9.5px;font-weight:500}
+.disc-note{text-align:center;font-size:11.5px;color:#aeb2c2;padding:11px 14px 5px;line-height:1.5}
+.disc-link{color:#4ea1ff;text-decoration:underline;font-weight:600}
+.disc-link:hover{color:#7dbaff}
+.std-tbl tr.disc-red td{background:rgba(224,68,68,.07)}
+.disc-yc{display:inline-block;min-width:20px;background:rgba(245,200,40,.16);color:#f5c828;font-weight:700;border-radius:4px;padding:1px 5px;font-size:10.5px}
 .ts-empty{color:#556;font-size:12px;text-align:center;padding:50px 20px;
   border:1px dashed var(--border);border-radius:10px;line-height:1.6}
 .ts-rank{font-size:15px;text-align:center}
@@ -385,6 +390,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   <div class="tab" onclick="switchTab(&#39;standings&#39;)">📊 Standings</div>
   <div class="tab" onclick="switchTab(&#39;schedule&#39;)">📅 Schedule</div>
   <div class="tab" onclick="switchTab(&#39;scorers&#39;)">⚽ Top Scorers</div>
+  <div class="tab" onclick="switchTab(&#39;discipline&#39;)">🟨 Discipline</div>
 </div>
 
 <!-- BRACKET VIEW -->
@@ -433,6 +439,17 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   <div class="ts-wrap">
     <div id="scorersList"></div>
   </div>
+</div>
+
+<!-- DISCIPLINE VIEW -->
+<div class="view" id="view-discipline">
+  <div class="sec-div">
+    <div class="sec-div-line"></div>
+    <div class="sec-div-lbl">🟨 DISCIPLINE · CARDS & SUSPENSION WATCH</div>
+    <div class="sec-div-line"></div>
+  </div>
+  <div class="disc-note">Click <a class="disc-link" href="https://www.sportsmole.co.uk/football/world-cup-2026/feature/how-do-world-cup-suspensions-work-yellow-and-red-card-rules-explained_598737.html" target="_blank" rel="noopener noreferrer">here</a> to find out how the suspension works based on Yellow and Red Cards.</div>
+  <div id="discList" style="padding:0 14px 24px"></div>
 </div>
 
 <!-- H2H REVIEW MODAL -->
@@ -1636,6 +1653,7 @@ function renderAll(){
   renderStandings();
   renderSchedule();
   renderScorers();
+  renderDiscipline();
 }
 
 function resetAll(){
@@ -1802,6 +1820,40 @@ function renderTicker(j){
   if(lg){if(goalBlocks.length){lg.style.display='flex';lg.innerHTML=goalBlocks.join('');}else{lg.style.display='none';lg.innerHTML='';}}
 }
 
+
+/* -- DISCIPLINE TRACKER -- yellow/red cards from the ESPN feed -- */
+let DISCIPLINE=[];
+function espnCards(j){
+  const N=norm2name(),tally={};
+  ((j&&j.events)||[]).forEach(ev=>{
+    const c=ev.competitions&&ev.competitions[0];if(!c)return;
+    const idName={};(c.competitors||[]).forEach(x=>{if(x.team)idName[x.team.id]=x.team.displayName||x.team.name;});
+    (c.details||[]).forEach(d=>{
+      if(!d||(!d.yellowCard&&!d.redCard))return;
+      const a=(d.athletesInvolved||[])[0];if(!a)return;
+      const tid=(a.team&&a.team.id)||(d.team&&d.team.id);
+      const team=N[normT(idName[tid]||'')]||idName[tid]||'';
+      const key=a.id||((a.displayName||'')+'|'+team);
+      if(!tally[key])tally[key]={name:a.displayName||a.shortName||'-',team,yellow:0,red:0};
+      if(d.redCard)tally[key].red++; else if(d.yellowCard)tally[key].yellow++;
+    });
+  });
+  return Object.values(tally).sort((x,y)=>y.red-x.red||y.yellow-x.yellow||x.name.localeCompare(y.name));
+}
+function renderDiscipline(){
+  const el=document.getElementById('discList');if(!el)return;
+  const list=DISCIPLINE;
+  if(!list.length){el.innerHTML='<div class="ts-empty">🟨 No cards recorded yet.<br>Bookings appear here automatically as matches are played.</div>';return;}
+  el.innerHTML='<table class="std-tbl"><thead><tr><th>Player</th><th>Team</th><th style="width:54px">🟨</th><th style="width:54px">🟥</th></tr></thead><tbody>'+
+    list.map(p=>'<tr'+(p.red?' class="disc-red"':'')+'>'+
+      '<td>'+escHtml(p.name)+'</td>'+
+      '<td><div class="std-team-cell">'+fi(p.team,15)+' '+sn(p.team)+' <span style="color:#556;font-size:10px">('+cd(p.team)+')</span></div></td>'+
+      '<td style="text-align:center">'+(p.yellow?'<span class="disc-yc">'+p.yellow+'</span>':'')+'</td>'+
+      '<td style="text-align:center">'+(p.red?'🟥':'')+'</td>'+
+    '</tr>').join('')+
+    '</tbody></table>';
+}
+
 async function fetchLive(){
   const pill=document.getElementById('syncPill');
   const srcs=[];
@@ -1810,7 +1862,7 @@ async function fetchLive(){
     getJSON('https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&from=2026-06-10T00:00:00Z&to=2026-07-20T23:59:59Z&language=en&count=500')
   ]);
   let rows=[];
-  if(esp.status==='fulfilled'){const r=espnRows(esp.value);if(r.length){rows=rows.concat(r);srcs.push('ESPN');}LIVESCORERS=espnScorers(esp.value);renderScorers();renderTicker(esp.value);}
+  if(esp.status==='fulfilled'){const r=espnRows(esp.value);if(r.length){rows=rows.concat(r);srcs.push('ESPN');}LIVESCORERS=espnScorers(esp.value);renderScorers();renderTicker(esp.value);DISCIPLINE=espnCards(esp.value);renderDiscipline();}
   if(fif.status==='fulfilled'){const r=fifaRows(fif.value);if(r.length){rows=rows.concat(r);srcs.push('FIFA');}}
   if(rows.length||srcs.length){
     applyRows(rows);
