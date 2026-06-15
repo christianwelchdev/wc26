@@ -409,9 +409,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     <div class="sec-div-line"></div>
   </div>
   <div class="ts-wrap">
-    <div class="ts-toolbar">
-      <button class="ts-add-btn" onclick="openScorerModal()">+ Add Scorer</button>
-    </div>
     <div id="scorersList"></div>
   </div>
 </div>
@@ -1449,7 +1446,7 @@ function renderScorers(){
   const list=mergedScorers();
   const note=LIVESCORERS.length
     ? `<div class="ts-live-note">⚙️ Live from ESPN · ${LIVESCORERS.length} scorer${LIVESCORERS.length===1?'':'s'} · own goals &amp; shootout kicks excluded</div>`
-    : `<div class="ts-live-note">⚙️ Auto-syncs from ESPN as goals are scored · add entries manually below if needed</div>`;
+    : `<div class="ts-live-note">⚙️ Auto-syncs from ESPN as goals are scored</div>`;
   if(!list.length){
     el.innerHTML=note+`<div class="ts-empty">⚽ No goals recorded yet.<br>Scorers will appear here automatically once matches kick off.</div>`;
     return;
