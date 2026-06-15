@@ -290,6 +290,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   padding:9px 18px;font-size:.75em;font-weight:700;letter-spacing:1px;
   text-transform:uppercase;cursor:pointer;transition:background .2s}
 .ts-add-btn:hover{background:var(--gold2)}
+.ts-live-note{color:#7da7ff;font-size:10px;text-align:center;padding:10px 8px 2px;letter-spacing:.3px}
+.ts-live-tag{display:inline-flex;align-items:center;gap:4px;background:rgba(39,199,111,.15);color:var(--green);font-size:9px;font-weight:700;letter-spacing:1px;padding:3px 7px;border-radius:5px}
+.ts-pen{color:#556;font-size:9.5px;font-weight:500}
 .ts-empty{color:#556;font-size:12px;text-align:center;padding:50px 20px;
   border:1px dashed var(--border);border-radius:10px;line-height:1.6}
 .ts-rank{font-size:15px;text-align:center}
@@ -1391,26 +1394,77 @@ function saveScore(){
 const ALL_TEAMS=Object.values(GRP).flat();
 let editingScorerId=null;
 let scSelectedTeam=null;
+let LIVESCORERS=[];                  // aggregated live from ESPN feed
+
+// map normalized country -> app display name (so flags/codes resolve)
+let _n2n=null;
+function norm2name(){
+  if(_n2n)return _n2n;
+  _n2n={};Object.keys(FCDN).forEach(k=>{_n2n[normT(k)]=k;});
+  return _n2n;
+}
+function normName(n){
+  return String(n||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z]/g,'');
+}
+
+// aggregate goal scorers straight from the ESPN scoreboard payload
+function espnScorers(j){
+  const N=norm2name(),tally={};
+  ((j&&j.events)||[]).forEach(ev=>{
+    const c=ev.competitions&&ev.competitions[0];if(!c)return;
+    const idName={};
+    (c.competitors||[]).forEach(x=>{if(x.team)idName[x.team.id]=x.team.displayName||x.team.name;});
+    (c.details||[]).forEach(d=>{
+      if(!d||!d.scoringPlay||d.ownGoal||d.shootout)return;   // exclude own goals & shootout kicks
+      const a=(d.athletesInvolved||[])[0];if(!a)return;
+      const tid=(a.team&&a.team.id)||(d.team&&d.team.id);
+      const espnTeam=idName[tid]||'';
+      const team=N[normT(espnTeam)]||espnTeam;
+      const key=a.id||((a.displayName||'')+'|'+team);
+      if(!tally[key])tally[key]={name:a.displayName||a.shortName||'-',team,goals:0,pens:0};
+      tally[key].goals++;
+      if(d.penaltyKick)tally[key].pens++;
+    });
+  });
+  return Object.values(tally);
+}
+
+// live feed is authoritative; manual entries fill any gaps the feed misses
+function mergedScorers(){
+  const map={};
+  (LIVESCORERS||[]).forEach(p=>{
+    const key=normName(p.name)+'|'+normT(p.team||'');
+    map[key]={name:p.name,team:p.team,goals:p.goals,pens:p.pens||0,live:true};
+  });
+  (S.scorers||[]).forEach(s=>{
+    const key=normName(s.name)+'|'+normT(s.team||'');
+    if(!map[key])map[key]={name:s.name,team:s.team,goals:s.goals,pens:0,live:false,id:s.id};
+  });
+  return Object.values(map).sort((a,b)=>b.goals-a.goals||a.name.localeCompare(b.name));
+}
 
 function renderScorers(){
   const el=document.getElementById('scorersList');
   if(!el)return;
-  const list=(S.scorers||[]).slice().sort((a,b)=>b.goals-a.goals||a.name.localeCompare(b.name));
+  const list=mergedScorers();
+  const note=LIVESCORERS.length
+    ? `<div class="ts-live-note">⚙️ Live from ESPN · ${LIVESCORERS.length} scorer${LIVESCORERS.length===1?'':'s'} · own goals &amp; shootout kicks excluded</div>`
+    : `<div class="ts-live-note">⚙️ Auto-syncs from ESPN as goals are scored · add entries manually below if needed</div>`;
   if(!list.length){
-    el.innerHTML=`<div class="ts-empty">⚽ No goals logged yet.<br>Tap "+ Add Scorer" to start tracking the Golden Boot race.</div>`;
+    el.innerHTML=note+`<div class="ts-empty">⚽ No goals recorded yet.<br>Scorers will appear here automatically once matches kick off.</div>`;
     return;
   }
   const medals=['🥇','🥈','🥉'];
-  el.innerHTML=`
+  el.innerHTML=note+`
     <table class="std-tbl">
       <thead><tr><th style="width:46px">Rank</th><th>Player</th><th>Team</th><th style="width:56px">Goals</th><th style="width:64px"></th></tr></thead>
       <tbody>${list.map((s,i)=>`
         <tr>
           <td class="ts-rank">${medals[i]||(i+1)}</td>
-          <td>${escHtml(s.name)}</td>
+          <td>${escHtml(s.name)}${s.pens?` <span class="ts-pen">(${s.pens} pen)</span>`:''}</td>
           <td><div class="std-team-cell">${fi(s.team,15)} ${sn(s.team)} <span style="color:#556;font-size:10px">(${cd(s.team)})</span></div></td>
           <td class="pts-bold" style="text-align:center">${s.goals}</td>
-          <td style="text-align:right"><span class="ts-edit-btn" onclick="openScorerModal('${s.id}')">Edit</span></td>
+          <td style="text-align:right">${s.live?'<span class="ts-live-tag">LIVE</span>':`<span class="ts-edit-btn" onclick="openScorerModal('${s.id}')">Edit</span>`}</td>
         </tr>`).join('')}
       </tbody>
     </table>`;
@@ -1692,7 +1746,7 @@ async function fetchLive(){
     getJSON('https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&from=2026-06-10T00:00:00Z&to=2026-07-20T23:59:59Z&language=en&count=500')
   ]);
   let rows=[];
-  if(esp.status==='fulfilled'){const r=espnRows(esp.value);if(r.length){rows=rows.concat(r);srcs.push('ESPN');}}
+  if(esp.status==='fulfilled'){const r=espnRows(esp.value);if(r.length){rows=rows.concat(r);srcs.push('ESPN');}LIVESCORERS=espnScorers(esp.value);renderScorers();}
   if(fif.status==='fulfilled'){const r=fifaRows(fif.value);if(r.length){rows=rows.concat(r);srcs.push('FIFA');}}
   if(rows.length||srcs.length){
     applyRows(rows);
