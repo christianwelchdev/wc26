@@ -35,6 +35,16 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   letter-spacing:4px;font-weight:900;text-transform:uppercase}
 .hdr-title p{color:#778;font-size:.72em;letter-spacing:2px;margin-top:2px}
 .hdr-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* Live match ticker */
+.live-ticker{display:flex;align-items:stretch;background:linear-gradient(90deg,#1a0808,#0c0c16);border-bottom:1px solid var(--border);overflow:hidden}
+.tkr-label{display:flex;align-items:center;gap:5px;background:var(--red);color:#fff;font-size:9px;font-weight:800;letter-spacing:1px;padding:6px 11px;flex-shrink:0}
+.tkr-dot{width:7px;height:7px;border-radius:50%;background:#fff;animation:tkrpulse 1.2s infinite}
+@keyframes tkrpulse{0%,100%{opacity:1}50%{opacity:.25}}
+.tkr-scroll{display:flex;align-items:center;gap:22px;padding:6px 14px;overflow-x:auto;scrollbar-width:none}
+.tkr-scroll::-webkit-scrollbar{display:none}
+.tkr-game{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#cfd2e0;flex-shrink:0;white-space:nowrap}
+.tkr-game b{color:var(--gold);font-weight:800;font-size:12px}
+.tkr-min{color:var(--green);font-weight:700;font-size:10px;margin-left:2px}
 .pill{background:var(--gold-dim);border:1px solid rgba(245,166,35,.3);
   color:var(--gold);padding:4px 12px;border-radius:20px;font-size:.72em;letter-spacing:1px}
 .btn-reset{background:#1a0808;border:1px solid rgba(224,68,68,.35);color:var(--red);
@@ -356,6 +366,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     <span class="pill" id="syncPill" title="Live results from ESPN">⟳ LIVE SYNC…</span>
   </div>
 </div>
+
+<!-- LIVE TICKER -->
+<div id="liveTicker" class="live-ticker" style="display:none"></div>
 
 <!-- TABS -->
 <div class="sticky-tabs" id="tabs">
@@ -1735,6 +1748,29 @@ function applyRows(evs){
 
 async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error(r.status);return r.json();}
 
+
+/* -- LIVE MATCH TICKER -- in-progress games from the ESPN feed -- */
+function renderTicker(j){
+  const el=document.getElementById('liveTicker');if(!el)return;
+  const N=norm2name();
+  const live=[];
+  ((j&&j.events)||[]).forEach(ev=>{
+    const c=ev.competitions&&ev.competitions[0];if(!c)return;
+    const st=c.status||{},t=st.type||{};
+    if(t.state!=='in')return;
+    const home=(c.competitors||[]).find(x=>x.homeAway==='home');
+    const away=(c.competitors||[]).find(x=>x.homeAway==='away');
+    if(!home||!away)return;
+    const meta=tm=>{const nm=tm.team&&(tm.team.displayName||tm.team.name);const app=N[normT(nm)]||nm;return{flag:fi(app,16),abbr:(tm.team&&tm.team.abbreviation)||cd(app)||(nm||'').slice(0,3).toUpperCase()};};
+    const H=meta(home),A=meta(away);
+    const min=st.displayClock||t.shortDetail||'';
+    live.push('<span class="tkr-game">'+H.flag+' '+H.abbr+' <b>'+(home.score||0)+'–'+(away.score||0)+'</b> '+A.abbr+' '+A.flag+'<span class="tkr-min">'+min+'</span></span>');
+  });
+  if(!live.length){el.style.display='none';el.innerHTML='';return;}
+  el.style.display='flex';
+  el.innerHTML='<div class="tkr-label"><span class="tkr-dot"></span>LIVE</div><div class="tkr-scroll">'+live.join('')+'</div>';
+}
+
 async function fetchLive(){
   const pill=document.getElementById('syncPill');
   const srcs=[];
@@ -1743,7 +1779,7 @@ async function fetchLive(){
     getJSON('https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&from=2026-06-10T00:00:00Z&to=2026-07-20T23:59:59Z&language=en&count=500')
   ]);
   let rows=[];
-  if(esp.status==='fulfilled'){const r=espnRows(esp.value);if(r.length){rows=rows.concat(r);srcs.push('ESPN');}LIVESCORERS=espnScorers(esp.value);renderScorers();}
+  if(esp.status==='fulfilled'){const r=espnRows(esp.value);if(r.length){rows=rows.concat(r);srcs.push('ESPN');}LIVESCORERS=espnScorers(esp.value);renderScorers();renderTicker(esp.value);}
   if(fif.status==='fulfilled'){const r=fifaRows(fif.value);if(r.length){rows=rows.concat(r);srcs.push('FIFA');}}
   if(rows.length||srcs.length){
     applyRows(rows);
