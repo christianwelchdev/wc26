@@ -316,6 +316,12 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .disc-link:hover{color:#7dbaff}
 .std-tbl tr.disc-red td{background:rgba(224,68,68,.07)}
 .disc-yc{display:inline-block;min-width:20px;background:rgba(245,200,40,.16);color:#f5c828;font-weight:700;border-radius:4px;padding:1px 5px;font-size:10.5px}
+.stats-wrap{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;padding:18px 14px 30px}
+.stat-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px 18px;width:300px;max-width:100%}
+.stat-card h3{font-size:10px;letter-spacing:1.5px;color:var(--gold);margin:0 0 12px;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.stat-main{font-size:14px;font-weight:800;color:#eef;display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.4}
+.stat-big{font-size:22px;font-weight:900;color:var(--gold2)}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:8px}
 .ts-empty{color:#556;font-size:12px;text-align:center;padding:50px 20px;
   border:1px dashed var(--border);border-radius:10px;line-height:1.6}
 .ts-rank{font-size:15px;text-align:center}
@@ -391,6 +397,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   <div class="tab" onclick="switchTab(&#39;schedule&#39;)">📅 Schedule</div>
   <div class="tab" onclick="switchTab(&#39;scorers&#39;)">⚽ Top Scorers</div>
   <div class="tab" onclick="switchTab(&#39;discipline&#39;)">🟨 Discipline</div>
+  <div class="tab" onclick="switchTab(&#39;stats&#39;)">📈 Stats</div>
 </div>
 
 <!-- BRACKET VIEW -->
@@ -450,6 +457,16 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   </div>
   <div class="disc-note">Click <a class="disc-link" href="https://www.sportsmole.co.uk/football/world-cup-2026/feature/how-do-world-cup-suspensions-work-yellow-and-red-card-rules-explained_598737.html" target="_blank" rel="noopener noreferrer">here</a> to find out how the suspension works based on Yellow and Red Cards.</div>
   <div id="discList" style="padding:0 14px 24px"></div>
+</div>
+
+<!-- STATS VIEW -->
+<div class="view" id="view-stats">
+  <div class="sec-div">
+    <div class="sec-div-line"></div>
+    <div class="sec-div-lbl">📈 STAT HIGHLIGHTS</div>
+    <div class="sec-div-line"></div>
+  </div>
+  <div id="statsWrap" class="stats-wrap"></div>
 </div>
 
 <!-- H2H REVIEW MODAL -->
@@ -1654,6 +1671,7 @@ function renderAll(){
   renderSchedule();
   renderScorers();
   renderDiscipline();
+  renderStats();
 }
 
 function resetAll(){
@@ -1854,6 +1872,55 @@ function renderDiscipline(){
     '</tbody></table>';
 }
 
+
+/* -- STAT HIGHLIGHTS -- biggest win / fastest goal / highest-scoring -- */
+let STATS={};
+function espnStats(j){
+  const N=norm2name();
+  let bigWin=null,highScore=null,fastGoal=null;
+  ((j&&j.events)||[]).forEach(ev=>{
+    const c=ev.competitions&&ev.competitions[0];if(!c)return;
+    const st=(c.status&&c.status.type)||{};
+    const home=(c.competitors||[]).find(x=>x.homeAway==='home');
+    const away=(c.competitors||[]).find(x=>x.homeAway==='away');
+    if(!home||!away)return;
+    const hn0=home.team&&(home.team.displayName||home.team.name),an0=away.team&&(away.team.displayName||away.team.name);
+    const H=N[normT(hn0)]||hn0,A=N[normT(an0)]||an0;
+    const hs=parseInt(home.score)||0,as=parseInt(away.score)||0;
+    if(st.completed){
+      const margin=Math.abs(hs-as),total=hs+as;
+      if(margin>0&&(!bigWin||margin>bigWin.margin||(margin===bigWin.margin&&total>bigWin.total))){
+        const hw=hs>as;
+        bigWin={wTeam:hw?H:A,lTeam:hw?A:H,ws:hw?hs:as,ls:hw?as:hs,margin,total};
+      }
+      if(total>0&&(!highScore||total>highScore.total)){highScore={home:H,away:A,hs,as,total};}
+    }
+    const hAbbr=(home.team&&home.team.abbreviation)||cd(H)||'',aAbbr=(away.team&&away.team.abbreviation)||cd(A)||'';
+    (c.details||[]).forEach(d=>{
+      if(!d||!d.scoringPlay||d.shootout)return;
+      const cv=(d.clock&&d.clock.value);if(cv==null)return;
+      if(fastGoal&&cv>=fastGoal.cv)return;
+      const a=(d.athletesInvolved||[])[0];
+      const who=a?(a.shortName||a.displayName):'Goal';
+      const scId=(a&&a.team&&a.team.id)||(d.team&&d.team.id);
+      const team=scId===(home.team&&home.team.id)?H:A;
+      fastGoal={cv,min:(d.clock&&d.clock.displayValue)||'',scorer:who+(d.ownGoal?' (OG)':''),team,match:hAbbr+' v '+aAbbr};
+    });
+  });
+  return {bigWin,highScore,fastGoal};
+}
+function renderStats(){
+  const el=document.getElementById('statsWrap');if(!el)return;
+  const s=STATS||{};
+  if(!s.bigWin&&!s.highScore&&!s.fastGoal){el.innerHTML='<div class="ts-empty">📊 No completed matches yet.<br>Highlights appear here as games finish.</div>';return;}
+  const card=(title,main,sub)=>'<div class="stat-card"><h3>'+title+'</h3><div class="stat-main">'+main+'</div><div class="stat-sub">'+sub+'</div></div>';
+  const out=[];
+  if(s.bigWin){const b=s.bigWin;out.push(card('🏆 Biggest Win',fi(b.wTeam,18)+' '+sn(b.wTeam)+' <span class="stat-big">'+b.ws+'–'+b.ls+'</span> '+sn(b.lTeam)+' '+fi(b.lTeam,18),'+'+b.margin+' goal margin'));}
+  if(s.fastGoal){const g=s.fastGoal;out.push(card('⚡ Fastest Goal','<span class="stat-big">'+g.min+'</span> '+escHtml(g.scorer),fi(g.team,16)+' '+sn(g.team)+' · '+g.match));}
+  if(s.highScore){const h=s.highScore;out.push(card('🔥 Highest-Scoring Match',fi(h.home,18)+' '+sn(h.home)+' <span class="stat-big">'+h.hs+'–'+h.as+'</span> '+sn(h.away)+' '+fi(h.away,18),h.total+' goals'));}
+  el.innerHTML=out.join('');
+}
+
 async function fetchLive(){
   const pill=document.getElementById('syncPill');
   const srcs=[];
@@ -1862,7 +1929,7 @@ async function fetchLive(){
     getJSON('https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&from=2026-06-10T00:00:00Z&to=2026-07-20T23:59:59Z&language=en&count=500')
   ]);
   let rows=[];
-  if(esp.status==='fulfilled'){const r=espnRows(esp.value);if(r.length){rows=rows.concat(r);srcs.push('ESPN');}LIVESCORERS=espnScorers(esp.value);renderScorers();renderTicker(esp.value);DISCIPLINE=espnCards(esp.value);renderDiscipline();}
+  if(esp.status==='fulfilled'){const r=espnRows(esp.value);if(r.length){rows=rows.concat(r);srcs.push('ESPN');}LIVESCORERS=espnScorers(esp.value);renderScorers();renderTicker(esp.value);DISCIPLINE=espnCards(esp.value);renderDiscipline();STATS=espnStats(esp.value);renderStats();}
   if(fif.status==='fulfilled'){const r=fifaRows(fif.value);if(r.length){rows=rows.concat(r);srcs.push('FIFA');}}
   if(rows.length||srcs.length){
     applyRows(rows);
