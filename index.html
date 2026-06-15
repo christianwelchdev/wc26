@@ -45,6 +45,13 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .tkr-game{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#cfd2e0;flex-shrink:0;white-space:nowrap}
 .tkr-game b{color:var(--gold);font-weight:800;font-size:12px}
 .tkr-min{color:var(--green);font-weight:700;font-size:10px;margin-left:2px}
+.live-goals{display:flex;flex-direction:column;gap:5px;background:#0a0a14;border-bottom:1px solid var(--border);padding:7px 14px;overflow-x:auto;scrollbar-width:none}
+.live-goals::-webkit-scrollbar{display:none}
+.lg-match{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-size:11px}
+.lg-score{font-weight:800;color:var(--gold);font-size:10px;letter-spacing:.5px;white-space:nowrap;flex-shrink:0}
+.lg-goal{color:#cfd2e0;white-space:nowrap}
+.lg-goal .lg-tag{color:#7da7ff;font-weight:700;font-size:9px;margin:0 1px}
+.lg-goal .lg-min{color:var(--green);font-weight:700;font-size:9.5px;margin-left:3px}
 .pill{background:var(--gold-dim);border:1px solid rgba(245,166,35,.3);
   color:var(--gold);padding:4px 12px;border-radius:20px;font-size:.72em;letter-spacing:1px}
 .btn-reset{background:#1a0808;border:1px solid rgba(224,68,68,.35);color:var(--red);
@@ -369,6 +376,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 
 <!-- LIVE TICKER -->
 <div id="liveTicker" class="live-ticker" style="display:none"></div>
+<div id="liveGoals" class="live-goals" style="display:none"></div>
 
 <!-- TABS -->
 <div class="sticky-tabs" id="tabs">
@@ -1751,9 +1759,10 @@ async function getJSON(u){const r=await fetch(u);if(!r.ok)throw new Error(r.stat
 
 /* -- LIVE MATCH TICKER -- in-progress games from the ESPN feed -- */
 function renderTicker(j){
-  const el=document.getElementById('liveTicker');if(!el)return;
+  const tk=document.getElementById('liveTicker');
+  const lg=document.getElementById('liveGoals');
   const N=norm2name();
-  const live=[];
+  const chips=[],goalBlocks=[];
   ((j&&j.events)||[]).forEach(ev=>{
     const c=ev.competitions&&ev.competitions[0];if(!c)return;
     const st=c.status||{},t=st.type||{};
@@ -1764,11 +1773,23 @@ function renderTicker(j){
     const meta=tm=>{const nm=tm.team&&(tm.team.displayName||tm.team.name);const app=N[normT(nm)]||nm;return{flag:fi(app,16),abbr:(tm.team&&tm.team.abbreviation)||cd(app)||(nm||'').slice(0,3).toUpperCase()};};
     const H=meta(home),A=meta(away);
     const min=st.displayClock||t.shortDetail||'';
-    live.push('<span class="tkr-game">'+H.flag+' '+H.abbr+' <b>'+(home.score||0)+'–'+(away.score||0)+'</b> '+A.abbr+' '+A.flag+'<span class="tkr-min">'+min+'</span></span>');
+    chips.push('<span class="tkr-game">'+H.flag+' '+H.abbr+' <b>'+(home.score||0)+'–'+(away.score||0)+'</b> '+A.abbr+' '+A.flag+'<span class="tkr-min">'+min+'</span></span>');
+    const idAbbr={};(c.competitors||[]).forEach(x=>{if(x.team)idAbbr[x.team.id]=(x.team.abbreviation||'');});
+    const goals=(c.details||[]).filter(d=>d&&d.scoringPlay&&!d.shootout).map(d=>{
+      const a=(d.athletesInvolved||[])[0];
+      const who=a?(a.shortName||a.displayName):'Goal';
+      const tag=idAbbr[(a&&a.team&&a.team.id)||(d.team&&d.team.id)]||'';
+      const ann=d.ownGoal?' (OG)':(d.penaltyKick?' (P)':'');
+      const mm=(d.clock&&d.clock.displayValue)||'';
+      const cv=(d.clock&&d.clock.value)||0;
+      return {cv,html:'<span class="lg-goal">⚽ '+who+' <span class="lg-tag">'+tag+'</span>'+ann+'<span class="lg-min">'+mm+'</span></span>'};
+    }).sort((x,y)=>x.cv-y.cv);
+    if(goals.length){
+      goalBlocks.push('<div class="lg-match"><span class="lg-score">'+H.abbr+' '+(home.score||0)+'–'+(away.score||0)+' '+A.abbr+'</span>'+goals.map(g=>g.html).join('')+'</div>');
+    }
   });
-  if(!live.length){el.style.display='none';el.innerHTML='';return;}
-  el.style.display='flex';
-  el.innerHTML='<div class="tkr-label"><span class="tkr-dot"></span>LIVE</div><div class="tkr-scroll">'+live.join('')+'</div>';
+  if(tk){if(chips.length){tk.style.display='flex';tk.innerHTML='<div class="tkr-label"><span class="tkr-dot"></span>LIVE</div><div class="tkr-scroll">'+chips.join('')+'</div>';}else{tk.style.display='none';tk.innerHTML='';}}
+  if(lg){if(goalBlocks.length){lg.style.display='flex';lg.innerHTML=goalBlocks.join('');}else{lg.style.display='none';lg.innerHTML='';}}
 }
 
 async function fetchLive(){
