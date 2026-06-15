@@ -283,6 +283,37 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .h2h-match-row{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid #1a1a2a;cursor:pointer;transition:background .15s;font-size:11px;border-radius:4px}
 .h2h-match-row:hover{background:rgba(245,166,35,.06)}
 
+/* ── TOP SCORERS ───────────────────────────────────────────────── */
+.ts-wrap{padding:0 16px 24px}
+.ts-toolbar{display:flex;justify-content:flex-end;padding:14px 0}
+.ts-add-btn{background:var(--gold);color:#000;border:none;border-radius:8px;
+  padding:9px 18px;font-size:.75em;font-weight:700;letter-spacing:1px;
+  text-transform:uppercase;cursor:pointer;transition:background .2s}
+.ts-add-btn:hover{background:var(--gold2)}
+.ts-empty{color:#556;font-size:12px;text-align:center;padding:50px 20px;
+  border:1px dashed var(--border);border-radius:10px;line-height:1.6}
+.ts-rank{font-size:15px;text-align:center}
+.ts-edit-btn{display:inline-flex;align-items:center;background:rgba(245,166,35,.12);
+  border:1px solid rgba(245,166,35,.4);color:var(--gold);font-size:9px;
+  padding:3px 9px;border-radius:3px;cursor:pointer;letter-spacing:.5px;
+  font-weight:700;white-space:nowrap;transition:all .2s}
+.ts-edit-btn:hover{background:var(--gold);color:#000}
+.team-sel{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));
+  gap:6px;max-height:220px;overflow-y:auto;padding:2px;margin-bottom:14px}
+.team-opt{display:flex;align-items:center;gap:6px;padding:6px 8px;
+  background:#0c0c18;border:1px solid var(--border);border-radius:6px;
+  cursor:pointer;font-size:10.5px;color:var(--text);transition:all .15s}
+.team-opt:hover{border-color:var(--gold)}
+.team-opt.sel{border-color:var(--gold);background:rgba(245,166,35,.14);
+  color:var(--gold);font-weight:700}
+.ts-field-lbl{color:#556;font-size:9px;letter-spacing:2px;
+  text-transform:uppercase;margin-bottom:6px;margin-top:2px}
+.ts-input{width:100%;background:#070716;border:2px solid #333;border-radius:8px;
+  color:var(--text);padding:9px 12px;font-size:13px;margin-bottom:14px;
+  -moz-appearance:textfield}
+.ts-input::-webkit-inner-spin-button,.ts-input::-webkit-outer-spin-button{-webkit-appearance:none}
+.ts-input:focus{border-color:var(--gold);outline:none;box-shadow:0 0 8px rgba(245,166,35,.3)}
+
 /* ── CONFETTI CANVAS ────────────────────────────────────────────── */
 #cCanvas{position:fixed;top:0;left:0;width:100%;height:100%;
   pointer-events:none;z-index:9999}
@@ -328,6 +359,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   <div class="tab act" onclick="switchTab(&#39;bracket&#39;)">🏆 Bracket</div>
   <div class="tab" onclick="switchTab(&#39;standings&#39;)">📊 Standings</div>
   <div class="tab" onclick="switchTab(&#39;schedule&#39;)">📅 Schedule</div>
+  <div class="tab" onclick="switchTab(&#39;scorers&#39;)">⚽ Top Scorers</div>
 </div>
 
 <!-- BRACKET VIEW -->
@@ -364,6 +396,21 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     <div class="sch-h3">48 teams · 104 matches · Group stage + Round of 32 to Final · All times Eastern (ET)</div>
   </div>
   <div id="schContainer"></div>
+</div>
+
+<!-- TOP SCORERS VIEW -->
+<div class="view" id="view-scorers">
+  <div class="sec-div">
+    <div class="sec-div-line"></div>
+    <div class="sec-div-lbl">⚽ TOP SCORERS · GOLDEN BOOT TRACKER</div>
+    <div class="sec-div-line"></div>
+  </div>
+  <div class="ts-wrap">
+    <div class="ts-toolbar">
+      <button class="ts-add-btn" onclick="openScorerModal()">+ Add Scorer</button>
+    </div>
+    <div id="scorersList"></div>
+  </div>
 </div>
 
 <!-- H2H REVIEW MODAL -->
@@ -411,6 +458,25 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
       <button class="mbtn mbtn-clear" onclick="clearScore()">Clear</button>
       <button class="mbtn mbtn-cancel" onclick="closeModal()">Cancel</button>
       <button class="mbtn mbtn-save" onclick="saveScore()">Confirm ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT SCORER MODAL -->
+<div class="modal-bg" id="scorerModal">
+  <div class="modal-box" style="max-width:440px;width:96vw">
+    <div class="modal-title" id="scorerModalTitle">ADD SCORER</div>
+    <div class="modal-sub">Pick a team, enter player &amp; goals</div>
+    <div class="ts-field-lbl">TEAM</div>
+    <div class="team-sel" id="teamSelGrid"></div>
+    <div class="ts-field-lbl">PLAYER NAME</div>
+    <input type="text" class="ts-input" id="scName" placeholder="e.g. Lionel Messi" maxlength="40">
+    <div class="ts-field-lbl">GOALS</div>
+    <input type="number" class="ts-input" id="scGoals" min="0" max="99" value="0">
+    <div class="modal-btns">
+      <button class="mbtn mbtn-clear" id="scDeleteBtn" onclick="deleteScorer()" style="display:none">Delete</button>
+      <button class="mbtn mbtn-cancel" onclick="closeScorerModal()">Cancel</button>
+      <button class="mbtn mbtn-save" onclick="saveScorer()">Save ✓</button>
     </div>
   </div>
 </div>
@@ -470,6 +536,10 @@ const sn=t=>SN[t]||t;
 const td=(team,w=20)=>team?`${fi(team,w)} ${team} <span style="color:#556;font-size:.85em">(${cd(team)})</span>`:'';
 // Compact display: [img] ShortName (CODE) — for tight spaces
 const tdc=(team,w=18)=>team?`${fi(team,w)} ${sn(team)} <span style="color:#556;font-size:.85em">(${cd(team)})</span>`:'';
+// HTML-escape for user-entered text
+function escHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+// HTML-escape for attribute values (e.g. data-* with team names like "Bosnia & Herzegovina")
+function escAttr(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;');}
 
 const GRP={
   A:['Mexico','South Africa','South Korea','Czechia'],
@@ -626,6 +696,7 @@ const AXPOS={A:0,B:1,D:2,E:3,G:4,I:5,K:6,L:7};
 ================================================================ */
 let S={sc:{}};                     // manual scores (override live)
 try{const d=localStorage.getItem('wc26d');if(d)S=JSON.parse(d)}catch(e){}
+if(!S.scorers)S.scorers=[];         // top scorers list
 function save(){try{localStorage.setItem('wc26d',JSON.stringify(S))}catch(e){}}
 
 let LV={};                         // live results fetched from ESPN (final scores)
@@ -1315,6 +1386,98 @@ function saveScore(){
 }
 
 /* ================================================================
+   TOP SCORERS
+================================================================ */
+const ALL_TEAMS=Object.values(GRP).flat();
+let editingScorerId=null;
+let scSelectedTeam=null;
+
+function renderScorers(){
+  const el=document.getElementById('scorersList');
+  if(!el)return;
+  const list=(S.scorers||[]).slice().sort((a,b)=>b.goals-a.goals||a.name.localeCompare(b.name));
+  if(!list.length){
+    el.innerHTML=`<div class="ts-empty">⚽ No goals logged yet.<br>Tap "+ Add Scorer" to start tracking the Golden Boot race.</div>`;
+    return;
+  }
+  const medals=['🥇','🥈','🥉'];
+  el.innerHTML=`
+    <table class="std-tbl">
+      <thead><tr><th style="width:46px">Rank</th><th>Player</th><th>Team</th><th style="width:56px">Goals</th><th style="width:64px"></th></tr></thead>
+      <tbody>${list.map((s,i)=>`
+        <tr>
+          <td class="ts-rank">${medals[i]||(i+1)}</td>
+          <td>${escHtml(s.name)}</td>
+          <td><div class="std-team-cell">${fi(s.team,15)} ${sn(s.team)} <span style="color:#556;font-size:10px">(${cd(s.team)})</span></div></td>
+          <td class="pts-bold" style="text-align:center">${s.goals}</td>
+          <td style="text-align:right"><span class="ts-edit-btn" onclick="openScorerModal('${s.id}')">Edit</span></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+}
+
+function buildTeamSelGrid(selected){
+  const grid=document.getElementById('teamSelGrid');
+  grid.innerHTML=ALL_TEAMS.map(t=>
+    `<div class="team-opt${t===selected?' sel':''}" data-team="${escAttr(t)}">${fi(t,16)} <span>${sn(t)}</span></div>`
+  ).join('');
+  grid.querySelectorAll('.team-opt').forEach(o=>{
+    o.onclick=()=>selectScTeam(o.dataset.team);
+  });
+}
+
+function selectScTeam(team){
+  scSelectedTeam=team;
+  document.querySelectorAll('#teamSelGrid .team-opt').forEach(o=>
+    o.classList.toggle('sel',o.dataset.team===team)
+  );
+}
+
+function openScorerModal(id){
+  editingScorerId=id||null;
+  const sc=id?(S.scorers||[]).find(s=>s.id===id):null;
+  document.getElementById('scorerModalTitle').textContent=sc?'EDIT SCORER':'ADD SCORER';
+  document.getElementById('scName').value=sc?sc.name:'';
+  document.getElementById('scGoals').value=sc?sc.goals:0;
+  document.getElementById('scDeleteBtn').style.display=sc?'block':'none';
+  scSelectedTeam=sc?sc.team:null;
+  buildTeamSelGrid(scSelectedTeam);
+  document.getElementById('scorerModal').classList.add('open');
+  setTimeout(()=>document.getElementById('scName').focus(),100);
+}
+
+function closeScorerModal(){
+  document.getElementById('scorerModal').classList.remove('open');
+  editingScorerId=null;scSelectedTeam=null;
+}
+
+function saveScorer(){
+  const name=document.getElementById('scName').value.trim();
+  const goals=parseInt(document.getElementById('scGoals').value)||0;
+  if(!name){alert('Enter a player name.');return;}
+  if(!scSelectedTeam){alert('Select a team.');return;}
+  if(!S.scorers)S.scorers=[];
+  if(editingScorerId){
+    const sc=S.scorers.find(s=>s.id===editingScorerId);
+    if(sc){sc.name=name;sc.team=scSelectedTeam;sc.goals=goals;}
+  }else{
+    S.scorers.push({id:'sc_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),name,team:scSelectedTeam,goals});
+  }
+  save();closeScorerModal();renderAll();
+}
+
+function deleteScorer(){
+  if(!editingScorerId)return;
+  if(!confirm('Remove this scorer entry?'))return;
+  S.scorers=(S.scorers||[]).filter(s=>s.id!==editingScorerId);
+  save();closeScorerModal();renderAll();
+}
+
+document.getElementById('scorerModal').addEventListener('click',e=>{
+  if(e.target===document.getElementById('scorerModal'))closeScorerModal();
+});
+
+/* ================================================================
    CONFETTI
 ================================================================ */
 const cvs=document.getElementById('cCanvas');
@@ -1398,6 +1561,7 @@ function renderAll(){
   renderBracket();
   renderStandings();
   renderSchedule();
+  renderScorers();
 }
 
 function resetAll(){
@@ -1409,8 +1573,11 @@ function resetAll(){
    KEYBOARD & INIT
 ================================================================ */
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape')closeModal();
-  if(e.key==='Enter'&&curModal)saveScore();
+  if(e.key==='Escape'){closeModal();closeScorerModal();closeH2H();}
+  if(e.key==='Enter'){
+    if(curModal)saveScore();
+    else if(document.getElementById('scorerModal').classList.contains('open'))saveScorer();
+  }
 });
 document.getElementById('modalBg').addEventListener('click',e=>{
   if(e.target===document.getElementById('modalBg'))closeModal();
