@@ -415,8 +415,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   <div class="tab" onclick="switchTab(&#39;schedule&#39;)">📅 Schedule</div>
   <div class="tab" onclick="switchTab(&#39;scorers&#39;)">⚽ Top Scorers</div>
   <div class="tab" onclick="switchTab(&#39;discipline&#39;)">🟨 Discipline</div>
-  <div class="tab" onclick="switchTab(&#39;stats&#39;)">📈 Stats</div>
-  <div class="tab" onclick="switchTab(&#39;goalhl&#39;)">🎬 Match Highlights</div>
+  <div class="tab" onclick="switchTab(&#39;stats&#39;)">📈 Best Achievements</div>
+  <div class="tab" onclick="switchTab(&#39;goalhl&#39;)">🎬 Match Stats</div>
 </div>
 
 <!-- BRACKET VIEW -->
@@ -482,7 +482,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 <div class="view" id="view-stats">
   <div class="sec-div">
     <div class="sec-div-line"></div>
-    <div class="sec-div-lbl">📈 STAT HIGHLIGHTS</div>
+    <div class="sec-div-lbl">📈 BEST ACHIEVEMENTS</div>
     <div class="sec-div-line"></div>
   </div>
   <div id="statsWrap" class="stats-wrap"></div>
@@ -492,10 +492,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 <div class="view" id="view-goalhl">
   <div class="sec-div">
     <div class="sec-div-line"></div>
-    <div class="sec-div-lbl">🎬 MATCH HIGHLIGHTS</div>
+    <div class="sec-div-lbl">🎬 MATCH STATS</div>
     <div class="sec-div-line"></div>
   </div>
-  <div class="gh-note">Each match links to its <b>official</b> highlights page (opens on ESPN). Goal clips are rights-holder content and are not hosted here.</div>
+  <div class="gh-note">Each match links to its <b>official</b> ESPN match page for more in-depth stats. Match footage is rights-holder content and is not hosted here.</div>
   <div id="ghList" style="padding:4px 14px 28px"></div>
 </div>
 
@@ -2001,7 +2001,7 @@ function renderGoalHighlights(){
   if(!list.length){el.innerHTML='<div class="ts-empty">🎬 No goals yet.<br>Goal highlights appear here as matches are played.</div>';return;}
   el.innerHTML=list.map(m=>{
     const goals=m.goals.map(g=>'<span class="gh-goal"><b>'+g.min+'</b> '+escHtml(g.who)+' <span class="gh-side">'+(g.side==='H'?m.hAbbr:m.aAbbr)+'</span></span>').join('');
-    const link=m.url?'<a class="gh-watch" href="'+m.url+'" target="_blank" rel="noopener noreferrer">▶ Watch official highlights ↗</a>':'<span class="gh-nolink">Official highlights link not yet available</span>';
+    const link=m.url?'<a class="gh-watch" href="'+m.url+'" target="_blank" rel="noopener noreferrer">▶ More indepth stats ↗</a>':'<span class="gh-nolink">Official highlights link not yet available</span>';
     const badge=m.live?'<span class="gh-live">LIVE</span>':(m.done?'<span class="gh-ft">FT</span>':'');
     return '<div class="gh-card">'+
       '<div class="gh-head">'+fi(m.H,18)+' <span class="gh-team">'+sn(m.H)+'</span> <span class="gh-score">'+m.hs+'–'+m.as+'</span> <span class="gh-team">'+sn(m.A)+'</span> '+fi(m.A,18)+' '+badge+'</div>'+
