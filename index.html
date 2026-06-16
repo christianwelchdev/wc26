@@ -2067,13 +2067,15 @@ function espnMatches(j){
   out.sort((a,b)=>(b.live-a.live)||(new Date(b.date)-new Date(a.date)));
   return out;
 }
+const MH_OVERRIDES=[{a:"France",b:"Senegal",url:"https://www.youtube.com/watch?v=7KZw5ieBHyw"}];
+function mhOverride(H,A){const k=pk(H,A);for(const o of MH_OVERRIDES){if(pk(o.a,o.b)===k)return o.url;}return "";}
 function renderMatchHighlights(){
   const el=document.getElementById('mhList');if(!el)return;
   const list=MATCHES;
   if(!list.length){el.innerHTML='<div class="ts-empty">🎥 No matches played yet.<br>Highlights appear here after each match.</div>';return;}
   el.innerHTML=list.map(m=>{
     const q=encodeURIComponent('Highlights '+m.H+' '+m.hs+'-'+m.as+' '+m.A+' FIFA World Cup 2026');
-    const url='https://www.youtube.com/results?search_query='+q;
+    const url=mhOverride(m.H,m.A)||('https://www.youtube.com/results?search_query='+q);
     const when=m.live?'Streaming now':('Official highlights · '+mhTimeAgo(m.date));
     return '<a class="yt-card" href="'+url+'" target="_blank" rel="noopener noreferrer">'+
       '<div class="yt-thumb">'+
