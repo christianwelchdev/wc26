@@ -340,6 +340,19 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .gh-watch{display:inline-flex;align-items:center;gap:4px;background:rgba(78,161,255,.14);color:#4ea1ff;text-decoration:none;font-weight:700;font-size:11.5px;padding:6px 12px;border-radius:6px}
 .gh-watch:hover{background:#4ea1ff;color:#001}
 .gh-nolink{color:#556;font-size:10.5px;font-style:italic}
+.mh-note{text-align:center;font-size:11px;color:#8a8ea3;padding:10px 16px 8px;line-height:1.5;max-width:640px;margin:0 auto}
+.mh-wrap{max-width:680px;margin:0 auto;padding:4px 12px 30px}
+.yt-card{display:flex;gap:14px;padding:10px;border-radius:10px;text-decoration:none;color:inherit;transition:background .15s}
+.yt-card:hover{background:rgba(255,255,255,.05)}
+.yt-thumb{position:relative;flex-shrink:0;width:168px;height:94px;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,#13294a,#0a0a14);display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px solid var(--border)}
+.yt-thumb-top{display:flex;align-items:center;gap:7px;font-weight:900;font-size:15px;color:#fff}
+.yt-thumb-lbl{margin-top:5px;font-weight:900;font-size:12px;letter-spacing:1.5px;color:#ffd24a;text-align:center;line-height:1.05}
+.yt-dur{position:absolute;right:5px;bottom:5px;background:rgba(0,0,0,.82);color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:3px}
+.yt-meta{display:flex;flex-direction:column;gap:3px;padding-top:2px;min-width:0}
+.yt-title{font-size:14px;font-weight:600;color:#f1f1f1;line-height:1.3}
+.yt-chan{font-size:12px;color:#aaa;display:flex;align-items:center;gap:4px}
+.yt-check{color:#aaa;font-size:10px}
+.yt-sub{font-size:12px;color:#aaa}
 .ts-empty{color:#556;font-size:12px;text-align:center;padding:50px 20px;
   border:1px dashed var(--border);border-radius:10px;line-height:1.6}
 .ts-rank{font-size:15px;text-align:center}
@@ -417,6 +430,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   <div class="tab" onclick="switchTab(&#39;discipline&#39;)">🟨 Discipline</div>
   <div class="tab" onclick="switchTab(&#39;stats&#39;)">📈 Best Achievements</div>
   <div class="tab" onclick="switchTab(&#39;goalhl&#39;)">🎬 Match Stats</div>
+  <div class="tab" onclick="switchTab(&#39;mh&#39;)">🎥 Match Highlights</div>
 </div>
 
 <!-- BRACKET VIEW -->
@@ -497,6 +511,17 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   </div>
   <div class="gh-note">Each match links to its <b>official</b> ESPN match page for more in-depth stats. Match footage is rights-holder content and is not hosted here.</div>
   <div id="ghList" style="padding:4px 14px 28px"></div>
+</div>
+
+<!-- MATCH HIGHLIGHTS VIEW -->
+<div class="view" id="view-mh">
+  <div class="sec-div">
+    <div class="sec-div-line"></div>
+    <div class="sec-div-lbl">🎥 MATCH HIGHLIGHTS</div>
+    <div class="sec-div-line"></div>
+  </div>
+  <div class="mh-note">Official highlights on the <a class="disc-link" href="https://www.youtube.com/channel/UCpcTrCXblq78GZrTUTLWeBw" target="_blank" rel="noopener noreferrer">FIFA YouTube channel ↗</a>. Each card opens that match’s official highlights.</div>
+  <div id="mhList" class="mh-wrap"></div>
 </div>
 
 <!-- H2H REVIEW MODAL -->
@@ -1706,6 +1731,7 @@ function renderAll(){
   renderDiscipline();
   renderStats();
   renderGoalHighlights();
+  renderMatchHighlights();
   applyAd();
 }
 
@@ -2011,6 +2037,59 @@ function renderGoalHighlights(){
   }).join('');
 }
 
+
+/* -- MATCH HIGHLIGHTS -- YouTube-style cards linking to official FIFA highlights -- */
+let MATCHES=[];
+function mhTimeAgo(d){
+  if(!d)return'';
+  const ms=Date.now()-new Date(d).getTime();
+  if(ms<0)return'upcoming';
+  const h=Math.floor(ms/3600000);
+  if(h<1){const m=Math.max(1,Math.floor(ms/60000));return m+(m===1?' minute ago':' minutes ago');}
+  if(h<24)return h+(h===1?' hour ago':' hours ago');
+  const days=Math.floor(h/24);
+  return days+(days===1?' day ago':' days ago');
+}
+function espnMatches(j){
+  const N=norm2name(),out=[];
+  ((j&&j.events)||[]).forEach(ev=>{
+    const c=ev.competitions&&ev.competitions[0];if(!c)return;
+    const st=(c.status&&c.status.type)||{};
+    if(!st.completed&&st.state!=='in')return;
+    const home=(c.competitors||[]).find(x=>x.homeAway==='home');
+    const away=(c.competitors||[]).find(x=>x.homeAway==='away');
+    if(!home||!away)return;
+    const Hn=home.team&&(home.team.displayName||home.team.name),An=away.team&&(away.team.displayName||away.team.name);
+    out.push({H:N[normT(Hn)]||Hn,A:N[normT(An)]||An,
+      hs:parseInt(home.score)||0,as:parseInt(away.score)||0,
+      live:st.state==='in',date:c.date||ev.date||''});
+  });
+  out.sort((a,b)=>(b.live-a.live)||(new Date(b.date)-new Date(a.date)));
+  return out;
+}
+function renderMatchHighlights(){
+  const el=document.getElementById('mhList');if(!el)return;
+  const list=MATCHES;
+  if(!list.length){el.innerHTML='<div class="ts-empty">🎥 No matches played yet.<br>Highlights appear here after each match.</div>';return;}
+  el.innerHTML=list.map(m=>{
+    const q=encodeURIComponent('Highlights '+m.H+' '+m.hs+'-'+m.as+' '+m.A+' FIFA World Cup 2026');
+    const url='https://www.youtube.com/results?search_query='+q;
+    const when=m.live?'Streaming now':('Official highlights · '+mhTimeAgo(m.date));
+    return '<a class="yt-card" href="'+url+'" target="_blank" rel="noopener noreferrer">'+
+      '<div class="yt-thumb">'+
+        '<div class="yt-thumb-top">'+fi(m.H,20)+' <span>'+m.hs+'–'+m.as+'</span> '+fi(m.A,20)+'</div>'+
+        '<div class="yt-thumb-lbl">MATCH<br>HIGHLIGHTS</div>'+
+        '<div class="yt-dur">'+(m.live?'● LIVE':'▶ HD')+'</div>'+
+      '</div>'+
+      '<div class="yt-meta">'+
+        '<div class="yt-title">Highlights | '+escHtml(m.H)+' '+m.hs+'-'+m.as+' '+escHtml(m.A)+' | FIFA World Cup 2026™</div>'+
+        '<div class="yt-chan">FIFA <span class="yt-check">✔</span></div>'+
+        '<div class="yt-sub">'+when+'</div>'+
+      '</div>'+
+    '</a>';
+  }).join('');
+}
+
 async function fetchLive(){
   const pill=document.getElementById('syncPill');
   const srcs=[];
@@ -2019,7 +2098,7 @@ async function fetchLive(){
     getJSON('https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&from=2026-06-10T00:00:00Z&to=2026-07-20T23:59:59Z&language=en&count=500')
   ]);
   let rows=[];
-  if(esp.status==='fulfilled'){const r=espnRows(esp.value);if(r.length){rows=rows.concat(r);srcs.push('ESPN');}LIVESCORERS=espnScorers(esp.value);renderScorers();renderTicker(esp.value);DISCIPLINE=espnCards(esp.value);renderDiscipline();STATS=espnStats(esp.value);renderStats();GOALHL=espnGoalHighlights(esp.value);renderGoalHighlights();}
+  if(esp.status==='fulfilled'){const r=espnRows(esp.value);if(r.length){rows=rows.concat(r);srcs.push('ESPN');}LIVESCORERS=espnScorers(esp.value);renderScorers();renderTicker(esp.value);DISCIPLINE=espnCards(esp.value);renderDiscipline();STATS=espnStats(esp.value);renderStats();GOALHL=espnGoalHighlights(esp.value);renderGoalHighlights();MATCHES=espnMatches(esp.value);renderMatchHighlights();}
   if(fif.status==='fulfilled'){const r=fifaRows(fif.value);if(r.length){rows=rows.concat(r);srcs.push('FIFA');}}
   if(rows.length||srcs.length){
     applyRows(rows);
