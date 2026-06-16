@@ -327,6 +327,19 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .ad-ph{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;border:2px dashed rgba(245,166,35,.55);border-radius:10px;color:var(--gold);font-weight:800;font-size:16px;letter-spacing:1px;text-align:center;line-height:1.25;background:#0a0a14;pointer-events:none}
 .ad-slot.show-ph .ad-img{visibility:hidden}
 .ad-slot.show-ph .ad-ph{display:flex}
+.gh-note{text-align:center;font-size:11px;color:#8a8ea3;padding:10px 16px 6px;line-height:1.5;max-width:620px;margin:0 auto}
+.gh-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin:0 auto 12px;max-width:560px}
+.gh-head{display:flex;align-items:center;gap:7px;font-weight:700;font-size:13px;color:#eef;flex-wrap:wrap}
+.gh-score{color:var(--gold);font-weight:900;font-size:15px}
+.gh-live{background:var(--red);color:#fff;font-size:8px;font-weight:800;letter-spacing:1px;padding:2px 6px;border-radius:4px;margin-left:4px}
+.gh-ft{background:#23233a;color:#889;font-size:8px;font-weight:800;letter-spacing:1px;padding:2px 6px;border-radius:4px;margin-left:4px}
+.gh-goals{display:flex;flex-wrap:wrap;gap:6px 14px;margin:9px 0 11px}
+.gh-goal{font-size:11.5px;color:#cfd2e0;white-space:nowrap}
+.gh-goal b{color:var(--green);font-size:10px;margin-right:2px}
+.gh-side{color:#7da7ff;font-weight:700;font-size:9px;margin-left:2px}
+.gh-watch{display:inline-flex;align-items:center;gap:4px;background:rgba(78,161,255,.14);color:#4ea1ff;text-decoration:none;font-weight:700;font-size:11.5px;padding:6px 12px;border-radius:6px}
+.gh-watch:hover{background:#4ea1ff;color:#001}
+.gh-nolink{color:#556;font-size:10.5px;font-style:italic}
 .ts-empty{color:#556;font-size:12px;text-align:center;padding:50px 20px;
   border:1px dashed var(--border);border-radius:10px;line-height:1.6}
 .ts-rank{font-size:15px;text-align:center}
@@ -403,6 +416,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   <div class="tab" onclick="switchTab(&#39;scorers&#39;)">⚽ Top Scorers</div>
   <div class="tab" onclick="switchTab(&#39;discipline&#39;)">🟨 Discipline</div>
   <div class="tab" onclick="switchTab(&#39;stats&#39;)">📈 Stats</div>
+  <div class="tab" onclick="switchTab(&#39;goalhl&#39;)">🎬 Goal Highlights</div>
 </div>
 
 <!-- BRACKET VIEW -->
@@ -472,6 +486,17 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     <div class="sec-div-line"></div>
   </div>
   <div id="statsWrap" class="stats-wrap"></div>
+</div>
+
+<!-- GOAL HIGHLIGHTS VIEW -->
+<div class="view" id="view-goalhl">
+  <div class="sec-div">
+    <div class="sec-div-line"></div>
+    <div class="sec-div-lbl">🎬 GOAL HIGHLIGHTS</div>
+    <div class="sec-div-line"></div>
+  </div>
+  <div class="gh-note">Each match links to its <b>official</b> highlights page (opens on ESPN). Goal clips are rights-holder content and are not hosted here.</div>
+  <div id="ghList" style="padding:4px 14px 28px"></div>
 </div>
 
 <!-- H2H REVIEW MODAL -->
@@ -1680,6 +1705,7 @@ function renderAll(){
   renderScorers();
   renderDiscipline();
   renderStats();
+  renderGoalHighlights();
   applyAd();
 }
 
@@ -1936,6 +1962,55 @@ let adShowPh=false;
 function applyAd(){const el=document.getElementById("adSlot");if(el)el.classList.toggle("show-ph",adShowPh);}
 function tickAd(){adShowPh=!adShowPh;applyAd();}
 
+
+/* -- GOAL HIGHLIGHTS -- goals per match + link to OFFICIAL highlights page -- */
+let GOALHL=[];
+function espnGoalHighlights(j){
+  const N=norm2name(),out=[];
+  ((j&&j.events)||[]).forEach(ev=>{
+    const c=ev.competitions&&ev.competitions[0];if(!c)return;
+    const st=(c.status&&c.status.type)||{};
+    const home=(c.competitors||[]).find(x=>x.homeAway==='home');
+    const away=(c.competitors||[]).find(x=>x.homeAway==='away');
+    if(!home||!away)return;
+    const raw=(c.details||[]).filter(d=>d&&d.scoringPlay&&!d.shootout);
+    if(!raw.length)return;
+    const Hn=home.team&&(home.team.displayName||home.team.name),An=away.team&&(away.team.displayName||away.team.name);
+    const H=N[normT(Hn)]||Hn,A=N[normT(An)]||An,hId=home.team&&home.team.id,aId=away.team&&away.team.id;
+    const goals=raw.map(d=>{
+      const a=(d.athletesInvolved||[])[0];
+      const who=a?(a.shortName||a.displayName):'Goal';
+      const scId=(a&&a.team&&a.team.id)||(d.team&&d.team.id);
+      let benefit=scId;if(d.ownGoal)benefit=(scId===hId?aId:hId);
+      const ann=d.ownGoal?' (OG)':(d.penaltyKick?' (P)':'');
+      return {cv:(d.clock&&d.clock.value)||0,min:(d.clock&&d.clock.displayValue)||'',who:who+ann,side:benefit===hId?'H':'A'};
+    }).sort((x,y)=>x.cv-y.cv);
+    // OFFICIAL highlight link only (espn.com), prefer the "Highlights" link
+    const links=(ev.links||[]).filter(l=>l&&l.href&&/(^|\.)espn\.com/i.test((l.href.split('/')[2]||'')));
+    const hl=links.find(l=>/highlight/i.test(l.text||''))||links.find(l=>/summary/i.test(l.text||''))||links[0];
+    out.push({H,A,hAbbr:(home.team&&home.team.abbreviation)||cd(H)||'',aAbbr:(away.team&&away.team.abbreviation)||cd(A)||'',
+      hs:parseInt(home.score)||0,as:parseInt(away.score)||0,live:st.state==='in',done:!!st.completed,
+      date:c.date||ev.date||'',goals,url:(hl&&hl.href)||''});
+  });
+  out.sort((a,b)=>(b.live-a.live)||(new Date(b.date)-new Date(a.date)));
+  return out;
+}
+function renderGoalHighlights(){
+  const el=document.getElementById('ghList');if(!el)return;
+  const list=GOALHL;
+  if(!list.length){el.innerHTML='<div class="ts-empty">🎬 No goals yet.<br>Goal highlights appear here as matches are played.</div>';return;}
+  el.innerHTML=list.map(m=>{
+    const goals=m.goals.map(g=>'<span class="gh-goal"><b>'+g.min+'</b> '+escHtml(g.who)+' <span class="gh-side">'+(g.side==='H'?m.hAbbr:m.aAbbr)+'</span></span>').join('');
+    const link=m.url?'<a class="gh-watch" href="'+m.url+'" target="_blank" rel="noopener noreferrer">▶ Watch official highlights ↗</a>':'<span class="gh-nolink">Official highlights link not yet available</span>';
+    const badge=m.live?'<span class="gh-live">LIVE</span>':(m.done?'<span class="gh-ft">FT</span>':'');
+    return '<div class="gh-card">'+
+      '<div class="gh-head">'+fi(m.H,18)+' <span class="gh-team">'+sn(m.H)+'</span> <span class="gh-score">'+m.hs+'–'+m.as+'</span> <span class="gh-team">'+sn(m.A)+'</span> '+fi(m.A,18)+' '+badge+'</div>'+
+      '<div class="gh-goals">'+goals+'</div>'+
+      '<div class="gh-foot">'+link+'</div>'+
+    '</div>';
+  }).join('');
+}
+
 async function fetchLive(){
   const pill=document.getElementById('syncPill');
   const srcs=[];
@@ -1944,7 +2019,7 @@ async function fetchLive(){
     getJSON('https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&from=2026-06-10T00:00:00Z&to=2026-07-20T23:59:59Z&language=en&count=500')
   ]);
   let rows=[];
-  if(esp.status==='fulfilled'){const r=espnRows(esp.value);if(r.length){rows=rows.concat(r);srcs.push('ESPN');}LIVESCORERS=espnScorers(esp.value);renderScorers();renderTicker(esp.value);DISCIPLINE=espnCards(esp.value);renderDiscipline();STATS=espnStats(esp.value);renderStats();}
+  if(esp.status==='fulfilled'){const r=espnRows(esp.value);if(r.length){rows=rows.concat(r);srcs.push('ESPN');}LIVESCORERS=espnScorers(esp.value);renderScorers();renderTicker(esp.value);DISCIPLINE=espnCards(esp.value);renderDiscipline();STATS=espnStats(esp.value);renderStats();GOALHL=espnGoalHighlights(esp.value);renderGoalHighlights();}
   if(fif.status==='fulfilled'){const r=fifaRows(fif.value);if(r.length){rows=rows.concat(r);srcs.push('FIFA');}}
   if(rows.length||srcs.length){
     applyRows(rows);
