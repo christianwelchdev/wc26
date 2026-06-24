@@ -2072,7 +2072,7 @@ function renderMatchHighlights(){
   const list=MATCHES;
   if(!list.length){el.innerHTML='<div class="ts-empty">🎥 No matches played yet.<br>Highlights appear here after each match.</div>';return;}
   el.innerHTML=list.map(m=>{
-    const q=encodeURIComponent('Highlights '+m.H+' '+m.hs+'-'+m.as+' '+m.A+' FIFA World Cup 2026');
+    const q=encodeURIComponent(m.H+' '+m.A+' highlights');
     const url='https://www.youtube.com/results?search_query='+q;
     const when=m.live?'Streaming now':('Official highlights · '+mhTimeAgo(m.date));
     return '<a class="yt-card" href="'+url+'" target="_blank" rel="noopener noreferrer">'+
