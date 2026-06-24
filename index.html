@@ -442,7 +442,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     <div class="sec-div-lbl">🏆 FIFA WORLD CUP 2026 · BRACKET</div>
     <div class="sec-div-line"></div>
   </div>
-  <div class="bracket-note">⚡ Round of 32 auto-fills from live group standings — <i>italic</i> names are projected and update as results change.</div>
+  <div class="bracket-note">⚡ The full bracket auto-fills from live standings — <i>italic</i> names are projected (knockout rounds assume the higher-ranked team advances) and update as results change.</div>
   <div class="bracket-scroll">
     <div style="position:relative;padding-top:24px">
       <div class="bracket-inner" id="bInner"></div>
@@ -1031,6 +1031,11 @@ function buildBracket(){
   const W=id=>winOf(B[id]);
   const Lo=id=>loseOf(B[id]);
   const sc=id=>eff(id)||{};
+  // group-stage strength map for projecting knockout winners
+  const STR={};Object.values(allSt()).forEach(arr=>arr.forEach(t=>{STR[t.team]={pts:t.pts,gd:t.gd,gf:t.gf};}));
+  const stronger=(a,b)=>{if(!a)return b;if(!b)return a;const A=STR[a]||{pts:-1,gd:0,gf:0},Bb=STR[b]||{pts:-1,gd:0,gf:0};if(A.pts!==Bb.pts)return A.pts>Bb.pts?a:b;if(A.gd!==Bb.gd)return A.gd>Bb.gd?a:b;if(A.gf!==Bb.gf)return A.gf>Bb.gf?a:b;return a<b?a:b;};
+  const advance=id=>{const b=B[id];if(!b)return{team:null,proj:false};const w=winOf(b);if(w)return{team:w,proj:false};if(b.t1&&b.t2)return{team:stronger(b.t1,b.t2),proj:true};return{team:null,proj:false};};
+  const eliminate=id=>{const b=B[id];if(!b)return{team:null,proj:false};const l=loseOf(b);if(l)return{team:l,proj:false};if(b.t1&&b.t2){const w=stronger(b.t1,b.t2);return{team:w===b.t1?b.t2:b.t1,proj:true};}return{team:null,proj:false};};
 
   R32.forEach(m=>{
     const s=sc(m.id);
@@ -1041,14 +1046,20 @@ function buildBracket(){
   });
   [['r16'],['qf'],['sf']].forEach(([k])=>KO_PAIRS[k].forEach(m=>{
     const s=sc(m.id);
-    B[m.id]={...m,lbl1:'W'+MN[m.fr[0]],lbl2:'W'+MN[m.fr[1]],t1:W(m.fr[0]),t2:W(m.fr[1]),
+    const a1=advance(m.fr[0]),a2=advance(m.fr[1]);
+    B[m.id]={...m,lbl1:'W'+MN[m.fr[0]],lbl2:'W'+MN[m.fr[1]],t1:a1.team,t2:a2.team,
+      proj1:a1.proj,proj2:a2.proj,
       s1:s.s1??null,s2:s.s2??null,p1:s.p1??null,p2:s.p2??null};
   }));
   const fs=sc('final');
-  B['final']={id:'final',...FB_META.final,lbl1:'W101',lbl2:'W102',t1:W('sf_1'),t2:W('sf_2'),
+  const fa1=advance('sf_1'),fa2=advance('sf_2');
+  B['final']={id:'final',...FB_META.final,lbl1:'W101',lbl2:'W102',t1:fa1.team,t2:fa2.team,
+    proj1:fa1.proj,proj2:fa2.proj,
     s1:fs.s1??null,s2:fs.s2??null,p1:fs.p1??null,p2:fs.p2??null};
   const bs=sc('bronze');
-  B['bronze']={id:'bronze',...FB_META.bronze,lbl1:'L101',lbl2:'L102',t1:Lo('sf_1'),t2:Lo('sf_2'),
+  const ba1=eliminate('sf_1'),ba2=eliminate('sf_2');
+  B['bronze']={id:'bronze',...FB_META.bronze,lbl1:'L101',lbl2:'L102',t1:ba1.team,t2:ba2.team,
+    proj1:ba1.proj,proj2:ba2.proj,
     s1:bs.s1??null,s2:bs.s2??null,p1:bs.p1??null,p2:bs.p2??null};
   return B;
 }
