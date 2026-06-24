@@ -97,6 +97,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 }
 .mc:hover{}
 .mc.mc-scored{border-color:#1f3f2f}
+.mc-proj{opacity:.6;font-style:italic}
+.bracket-note{text-align:center;font-size:10.5px;color:#7d8196;padding:7px 14px 0;letter-spacing:.3px}
 .mc-tag{
   background:rgba(245,166,35,.07);padding:2px 6px;
   font-size:9px;color:var(--gold);letter-spacing:1px;text-align:center;
@@ -440,6 +442,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     <div class="sec-div-lbl">🏆 FIFA WORLD CUP 2026 · BRACKET</div>
     <div class="sec-div-line"></div>
   </div>
+  <div class="bracket-note">⚡ Round of 32 auto-fills from live group standings — <i>italic</i> names are projected and update as results change.</div>
   <div class="bracket-scroll">
     <div style="position:relative;padding-top:24px">
       <div class="bracket-inner" id="bInner"></div>
@@ -820,6 +823,8 @@ function eff(id){return S.sc[id]??LV[id]??null;}
 
 function groupComplete(g){return GM.filter(m=>m.g===g).every(m=>eff(m.id)?.s1!=null);}
 function allGroupsComplete(){return Object.keys(GRP).every(groupComplete);}
+function groupStarted(g){return GM.filter(m=>m.g===g).some(m=>eff(m.id)?.s1!=null);}
+function allGroupsStarted(){return Object.keys(GRP).every(groupStarted);}
 
 /* ================================================================
    COMPUTATIONS
@@ -978,17 +983,24 @@ function bestThirds(){
     .sort((a,b)=>b.pts-a.pts||b.gd-a.gd||b.gf-a.gf);
 }
 
+function slotFinal(slot){
+  if(!slot)return false;
+  const dm=slot.match(/^([123])([A-L])$/);
+  if(dm)return groupComplete(dm[2]);
+  if(/^3\(/.test(slot))return allGroupsComplete();
+  return true;
+}
 function resolveSlot(slot,hostSeed){
   if(!slot)return null;
   const dm=slot.match(/^([123])([A-L])$/);
   if(dm){
     const p=parseInt(dm[1])-1,g=dm[2];
-    if(!groupComplete(g))return null;          // never pre-fill from an unfinished group
+    if(!groupStarted(g))return null;            // project from current standings once the group kicks off
     return standings(g)[p]?.team||null;
   }
   const tm=slot.match(/^3\(([A-L]+)\)$/);
   if(tm){
-    if(!allGroupsComplete())return null;       // thirds are only known when ALL groups end
+    if(!allGroupsStarted())return null;         // project thirds once every group has started
     const top8=bestThirds().slice(0,8).map(t=>t.g).sort().join('');
     const asg=ANNEX[top8];if(!asg)return null;
     const host=(hostSeed||'').replace(/^1/,'');// '1E' → 'E'
@@ -1022,7 +1034,9 @@ function buildBracket(){
 
   R32.forEach(m=>{
     const s=sc(m.id);
-    B[m.id]={...m,lbl1:m.s1,lbl2:m.s2,t1:resolveSlot(m.s1,m.s1),t2:resolveSlot(m.s2,m.s1),
+    const t1=resolveSlot(m.s1,m.s1),t2=resolveSlot(m.s2,m.s1);
+    B[m.id]={...m,lbl1:m.s1,lbl2:m.s2,t1,t2,
+      proj1:!!t1&&!slotFinal(m.s1),proj2:!!t2&&!slotFinal(m.s2),
       s1:s.s1??null,s2:s.s2??null,p1:s.p1??null,p2:s.p2??null};
   });
   [['r16'],['qf'],['sf']].forEach(([k])=>KO_PAIRS[k].forEach(m=>{
@@ -1055,10 +1069,10 @@ function mcHTML(m,tag,tagCls=''){
   if(m&&m.mn!=null&&tag.indexOf('·')<0)tag=`${tag} · M${m.mn} · ${(m.d||'').replace(/^\w+ /,'').toUpperCase()}`;
   if(lv)tag+=' · <span class="live-tag">LIVE</span>';
 
-  const teamRow=(team,slot,score,pen,isW,isL,liveSc)=>{
+  const teamRow=(team,slot,score,pen,isW,isL,liveSc,proj)=>{
     const cls=isW?'row-win':isL?'row-lose':'';
     const nm=team
-      ?`<span class="mc-flag">${fi(team,18)}</span><span class="mc-name">${sn(team)} <span style="color:#4a5a4a;font-size:9px">(${cd(team)})</span></span>`
+      ?`<span class="mc-flag">${fi(team,18)}</span><span class="mc-name${proj?' mc-proj':''}">${sn(team)} <span style="color:#4a5a4a;font-size:9px">(${cd(team)})</span></span>`
       :`<span class="mc-flag" style="font-size:9px;color:#3a3a5a;min-width:auto;padding-right:2px">${slot||'TBD'}</span><span class="mc-name mc-tbd"></span>`;
     const scTxt=score!=null?`${score}${hasP&&pen!=null?`<sup style="font-size:8px;color:#889">${pen}</sup>`:''}`
       :(liveSc!=null?`<span class="mc-score-live">${liveSc}</span>`:'');
@@ -1071,8 +1085,8 @@ function mcHTML(m,tag,tagCls=''){
 
   return`<div class="mc ${hasS?'mc-scored':''}" id="mc_${m.id}" onclick="${onclick}">
     <div class="mc-tag ${tagCls}">${tag}</div>
-    ${teamRow(m.t1,m.lbl1||m.id,m.s1,m.p1,w1,w2,lv?lv.s1:null)}
-    ${teamRow(m.t2,m.lbl2||m.id,m.s2,m.p2,w2,w1,lv?lv.s2:null)}
+    ${teamRow(m.t1,m.lbl1||m.id,m.s1,m.p1,w1,w2,lv?lv.s1:null,m.proj1)}
+    ${teamRow(m.t2,m.lbl2||m.id,m.s2,m.p2,w2,w1,lv?lv.s2:null,m.proj2)}
   </div>`;
 }
 
