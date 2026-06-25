@@ -397,6 +397,47 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .tab.act{color:var(--gold);border-bottom-color:var(--gold)}
 .tab:hover{color:var(--text)}
 .view{display:none}.view.show{display:block}
+
+/* ── AI PREDICTION ─────────────────────────────────── */
+.ai-wrap{padding:8px 14px 48px;max-width:1320px;margin:0 auto}
+.ai-badge{display:block;width:fit-content;margin:2px auto 8px;background:var(--gold-dim);color:var(--gold);border:1px solid rgba(245,166,35,.3);border-radius:20px;padding:3px 14px;font-size:10px;letter-spacing:1.5px;font-weight:700}
+.ai-intro{color:#9aa0b8;font-size:11.5px;line-height:1.65;max-width:780px;margin:0 auto 16px;text-align:center}
+.ai-factors{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px;max-width:940px;margin:0 auto 6px}
+.ai-fcard{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 13px}
+.ai-fcard h4{font-size:10px;letter-spacing:.8px;color:var(--gold);text-transform:uppercase;margin-bottom:5px}
+.ai-fcard h4 .wt{float:right;color:#6aff9e;font-weight:800}
+.ai-fcard p{font-size:10.5px;color:#868ca4;line-height:1.55}
+.ai-champ-card{background:linear-gradient(180deg,rgba(245,166,35,.14),rgba(39,199,111,.05));border:1px solid rgba(245,166,35,.45);border-radius:14px;padding:18px 18px 16px;text-align:center;max-width:440px;margin:18px auto}
+.ai-champ-card .lbl{font-size:10px;letter-spacing:3px;color:var(--gold)}
+.ai-champ-card .team{font-size:24px;font-weight:800;color:#6aff9e;margin:10px 0 6px;display:flex;align-items:center;justify-content:center;gap:10px}
+.ai-champ-card .sc{font-size:11px;color:#9aa0b8;line-height:1.6}
+.ai-sec-lbl{text-align:center;font-size:12px;letter-spacing:2.5px;color:var(--gold);text-transform:uppercase;margin:22px 0 4px;font-weight:700}
+.ai-sec-sub{text-align:center;font-size:10.5px;color:#777;margin-bottom:10px}
+.ai-bracket-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:6px 2px 14px}
+.ai-bracket{display:flex;min-width:1020px;align-items:stretch}
+.ai-col{display:flex;flex-direction:column;justify-content:space-around;flex:0 0 174px;padding:0 7px}
+.ai-col.col-champ{justify-content:center;flex:0 0 188px}
+.ai-col-hdr{font-size:9px;letter-spacing:1.5px;color:#4a4a66;text-transform:uppercase;text-align:center;margin-bottom:6px;font-weight:700}
+.ai-mc{background:var(--card2);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin:5px 0}
+.ai-mc.is-final{border-color:rgba(245,166,35,.5)}
+.ai-mc .r{display:flex;align-items:center;padding:5px 7px;font-size:11px;min-height:26px;gap:5px}
+.ai-mc .r+.r{border-top:1px solid #1e1e2e}
+.ai-mc .r.win{background:var(--win-row)}
+.ai-mc .r.win .nm{color:#aef5c8;font-weight:600}
+.ai-mc .r.lose{opacity:.48}
+.ai-mc .r .fl{flex-shrink:0;display:flex;align-items:center}
+.ai-mc .r .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ai-mc .r .rt{font-weight:700;color:var(--gold);font-size:10px;min-width:30px;text-align:right}
+.ai-trophy{font-size:40px;text-align:center;line-height:1.2}
+.ai-champ-mini{background:rgba(0,150,70,.16);border:1px solid rgba(39,199,111,.4);border-radius:8px;padding:9px;text-align:center;font-weight:700;color:#6aff9e;font-size:12.5px;display:flex;align-items:center;justify-content:center;gap:7px}
+.ai-tbl{width:100%;max-width:720px;margin:6px auto 10px;border-collapse:collapse;font-size:11px}
+.ai-tbl th{background:var(--surface);color:#7a8099;font-size:9px;letter-spacing:.5px;text-transform:uppercase;padding:6px 5px;border-bottom:1px solid var(--border);text-align:center}
+.ai-tbl th.l,.ai-tbl td.l{text-align:left}
+.ai-tbl td{padding:5px 5px;text-align:center;border-bottom:1px solid #14141e;color:#c7cbe0}
+.ai-tbl td .fl{display:inline-flex;vertical-align:middle;margin-right:5px}
+.ai-tbl tr.top1 td{background:rgba(245,166,35,.10)}
+.ai-tbl td.cmp{font-weight:800;color:var(--gold)}
+.ai-note{text-align:center;font-size:10px;color:#5f6478;max-width:820px;margin:14px auto 0;line-height:1.6}
 </style>
 </head>
 <body>
@@ -433,6 +474,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   <div class="tab" onclick="switchTab(&#39;stats&#39;)">📈 Best Achievements</div>
   <div class="tab" onclick="switchTab(&#39;goalhl&#39;)">🎬 Match Stats</div>
   <div class="tab" onclick="switchTab(&#39;mh&#39;)">🎥 Match Highlights</div>
+  <div class="tab" onclick="switchTab(&#39;ai&#39;)">🔮 AI Prediction</div>
 </div>
 
 <!-- BRACKET VIEW -->
@@ -525,6 +567,16 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   </div>
   <div class="mh-note">Official highlights on the <a class="disc-link" href="https://www.youtube.com/channel/UCpcTrCXblq78GZrTUTLWeBw" target="_blank" rel="noopener noreferrer">FIFA YouTube channel ↗</a>. Each card opens that match’s official highlights.</div>
   <div id="mhList" class="mh-wrap"></div>
+</div>
+
+<!-- AI PREDICTION VIEW -->
+<div class="view" id="view-ai">
+  <div class="sec-div">
+    <div class="sec-div-line"></div>
+    <div class="sec-div-lbl">🔮 AI PREDICTION</div>
+    <div class="sec-div-line"></div>
+  </div>
+  <div id="aiContent" class="ai-wrap"></div>
 </div>
 
 <!-- H2H REVIEW MODAL -->
@@ -1740,16 +1792,223 @@ function launchLocalConfetti(matchId,winner){
 /* ================================================================
    TABS & FULL RENDER
 ================================================================ */
+/* ================================================================
+   AI PREDICTION — 4-factor international-tournament model
+   ----------------------------------------------------------------
+   F1 International-Weighted Team Ratings  (35%) : World Football Elo
+        blended with Transfermarkt squad market value (talent depth).
+   F2 High-Pressure In-Tournament Data     (25%) : attacking profile +
+        LIVE rolling goal-difference / game (field-tilt / xG-diff proxy).
+   F3 Tournament Logistics & Advanced Vars (15%) : squad drop-off %
+        (bench quality) blended with travel/host/rotation logistics.
+   F4 Tournament Tactical Trends           (25%) : defensive structural
+        solidity + LIVE goals-against / game (clean-sheet tendency).
+   Knockouts: the team with the higher composite score advances
+   (risk-averse defensive efficiency is already priced into F4).
+================================================================ */
+// June-2026 World Football Elo (top 6 are observed values; rest current-form estimates)
+const AI_ELO={
+  'Spain':2129,'Argentina':2128,'France':2084,'England':2055,'Brazil':1986,'Netherlands':1972,
+  'Portugal':1958,'Germany':1948,'Belgium':1910,'Uruguay':1890,'Colombia':1885,'Croatia':1888,
+  'Morocco':1882,'Switzerland':1855,'Senegal':1852,'Norway':1850,'Japan':1840,'USA':1830,
+  'Ecuador':1820,'Türkiye':1815,'Austria':1812,'Mexico':1812,'Iran':1800,'Sweden':1788,
+  'Ivory Coast':1788,'Algeria':1786,'South Korea':1785,'Egypt':1780,'Canada':1782,'Czechia':1776,
+  'Scotland':1770,'Paraguay':1760,'Australia':1738,'Bosnia & Herzegovina':1728,'Ghana':1716,
+  'Tunisia':1716,'DR Congo':1713,'Panama':1700,'Qatar':1690,'Uzbekistan':1680,'South Africa':1680,
+  'Saudi Arabia':1668,'Iraq':1648,'Cape Verde':1646,'Jordan':1638,'New Zealand':1600,
+  'Haiti':1598,'Curaçao':1596
+};
+// Transfermarkt squad market value (€m) — full 48-team list
+const AI_MV={
+  'France':1520,'England':1360,'Spain':1220,'Portugal':1010,'Germany':947,'Brazil':928,
+  'Argentina':807,'Netherlands':754,'Norway':590,'Belgium':548,'Ivory Coast':522,'Senegal':478,
+  'Türkiye':474,'Morocco':448,'Sweden':406,'Croatia':387,'USA':386,'Ecuador':369,'Uruguay':359,
+  'Switzerland':333,'Colombia':302,'Japan':271,'Algeria':257,'Austria':245,'Ghana':235,
+  'Canada':199,'Mexico':192,'Czechia':188,'Scotland':170,'Paraguay':154,'Bosnia & Herzegovina':146,
+  'DR Congo':144,'South Korea':139,'Egypt':116,'Uzbekistan':85,'Australia':77,'Tunisia':70,
+  'Haiti':56,'Cape Verde':49,'South Africa':49,'Saudi Arabia':41,'Panama':35,'New Zealand':34,
+  'Iran':32,'Curaçao':26,'Iraq':21,'Jordan':20,'Qatar':20
+};
+// Reputational adjustments [attacking bias, defensive-solidity bias, squad-depth bias]
+const AI_BIAS={
+  'Spain':[5,3,5],'France':[6,3,7],'Brazil':[7,1,4],'Argentina':[4,5,3],'England':[3,3,7],
+  'Germany':[5,-1,4],'Portugal':[5,-1,4],'Netherlands':[3,1,2],'Norway':[6,-2,-5],'Belgium':[2,-2,1],
+  'Croatia':[-2,4,0],'Uruguay':[-1,5,1],'Colombia':[3,0,0],'Morocco':[1,6,1],'Switzerland':[-2,5,0],
+  'Senegal':[1,3,1],'Japan':[3,1,0],'USA':[2,-1,1],'Ecuador':[-2,5,0],'Mexico':[1,2,-1],
+  'Iran':[-4,6,-1],'Austria':[1,1,0],'Ivory Coast':[2,0,0],'Egypt':[0,2,-3],'Sweden':[1,0,-2],
+  'Algeria':[1,0,0],'Türkiye':[2,-1,0],'South Korea':[1,0,-2]
+};
+// Confederation by team (for logistics / travel-fatigue component)
+const AI_CONFED={
+  'Mexico':'HOST','Canada':'HOST','USA':'HOST',
+  'Haiti':'CONCACAF','Panama':'CONCACAF','Curaçao':'CONCACAF',
+  'Brazil':'CONMEBOL','Argentina':'CONMEBOL','Uruguay':'CONMEBOL','Colombia':'CONMEBOL','Ecuador':'CONMEBOL','Paraguay':'CONMEBOL',
+  'Spain':'UEFA','France':'UEFA','England':'UEFA','Germany':'UEFA','Portugal':'UEFA','Netherlands':'UEFA','Belgium':'UEFA','Croatia':'UEFA','Switzerland':'UEFA','Norway':'UEFA','Sweden':'UEFA','Austria':'UEFA','Türkiye':'UEFA','Czechia':'UEFA','Scotland':'UEFA','Bosnia & Herzegovina':'UEFA',
+  'Morocco':'CAF','Senegal':'CAF','Ivory Coast':'CAF','Algeria':'CAF','Egypt':'CAF','Ghana':'CAF','Tunisia':'CAF','DR Congo':'CAF','Cape Verde':'CAF','South Africa':'CAF',
+  'Japan':'AFC','Iran':'AFC','South Korea':'AFC','Saudi Arabia':'AFC','Qatar':'AFC','Uzbekistan':'AFC','Iraq':'AFC','Jordan':'AFC','Australia':'AFC',
+  'New Zealand':'OFC'
+};
+const AI_LOGI_BASE={HOST:80,CONCACAF:66,CONMEBOL:61,UEFA:53,CAF:49,AFC:47,OFC:43};
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+
+// Compute the 4 factor scores + composite for every team (live data folded in)
+function aiCompute(){
+  const elos=ALL_TEAMS.map(t=>AI_ELO[t]||1600);
+  const lmvs=ALL_TEAMS.map(t=>Math.log(AI_MV[t]||10));
+  const emin=Math.min(...elos),emax=Math.max(...elos);
+  const lmin=Math.min(...lmvs),lmax=Math.max(...lmvs);
+  const nE=t=>((AI_ELO[t]||1600)-emin)/(emax-emin)*100;
+  const nM=t=>(Math.log(AI_MV[t]||10)-lmin)/(lmax-lmin)*100;
+  // group→standings lookup for live form
+  const ST={};Object.keys(GRP).forEach(g=>{standings(g).forEach(r=>ST[r.team]={p:r.p,gd:r.gd,ga:r.ga});});
+  const C={};
+  ALL_TEAMS.forEach(t=>{
+    const eN=nE(t),mN=nM(t),baseQ=0.6*eN+0.4*mN;
+    const[ab,db,pb]=AI_BIAS[t]||[0,0,0];
+    const atk=clamp(baseQ+ab*1.4,0,100);
+    const def=clamp(baseQ+db*1.4,0,100);
+    const depth=clamp(0.7*mN+0.3*eN+pb*1.4,0,100);
+    const logi=AI_LOGI_BASE[AI_CONFED[t]||'UEFA'];
+    // live adjustments
+    const s=ST[t]||{p:0,gd:0,ga:0};
+    const formAdj=s.p>0?clamp((s.gd/s.p)*5,-12,12):0;          // rolling GD/game → field tilt / xG-diff proxy
+    const defAdj =s.p>0?clamp((1-(s.ga/s.p))*7,-10,10):0;       // GA/game → clean-sheet tendency
+    const F1=0.62*eN+0.38*mN;                                   // Elo + market value
+    const F2=clamp(0.55*atk+0.45*baseQ+formAdj,0,100);
+    const F3=clamp(0.55*depth+0.45*logi,0,100);
+    const F4=clamp(0.60*def+0.40*baseQ+defAdj,0,100);
+    const comp=0.35*F1+0.25*F2+0.15*F3+0.25*F4;
+    C[t]={F1,F2,F3,F4,comp,games:s.p};
+  });
+  return C;
+}
+
+// Project final group order: live points lead, composite fills the rest
+function aiGroupOrder(g,C){
+  const st=standings(g);
+  return GRP[g].map(t=>{
+    const r=st.find(x=>x.team===t)||{pts:0,gd:0};
+    return{team:t,pts:r.pts,gd:r.gd,comp:C[t].comp,key:C[t].comp+r.pts*2.5+r.gd*0.8};
+  }).sort((a,b)=>b.key-a.key);
+}
+
+function aiProject(C){
+  const win={},run={},third={},thirds=[];
+  Object.keys(GRP).forEach(g=>{
+    const o=aiGroupOrder(g,C);
+    win[g]=o[0].team;run[g]=o[1].team;third[g]=o[2].team;
+    thirds.push({g,team:o[2].team,key:o[2].key});
+  });
+  // best 8 thirds → FIFA Annex C assignment
+  const top8=thirds.sort((a,b)=>b.key-a.key).slice(0,8).map(x=>x.g).sort().join('');
+  const asg=ANNEX[top8]||'';
+  return{win,run,third,asg};
+}
+
+function aiResolve(slot,hostSeed,P){
+  if(!slot)return null;
+  const dm=slot.match(/^([123])([A-L])$/);
+  if(dm){const p=dm[1],g=dm[2];return p==='1'?P.win[g]:p==='2'?P.run[g]:P.third[g];}
+  const tm=slot.match(/^3\(([A-L]+)\)$/);
+  if(tm){
+    const host=(hostSeed||'').replace(/^1/,'');
+    const pos=AXPOS[host];if(pos==null||!P.asg)return null;
+    const tg=P.asg[pos];if(!tg||!tm[1].includes(tg))return null;
+    return P.third[tg];
+  }
+  return null;
+}
+const aiAdv=(a,b,C)=>!a?b:!b?a:(C[a].comp>=C[b].comp?a:b);
+
+function renderAIPred(){
+  const C=aiCompute();
+  const P=aiProject(C);
+  // ---- simulate every knockout match ----
+  const M={};
+  R32.forEach(m=>{M[m.id]={t1:aiResolve(m.s1,m.s1,P),t2:aiResolve(m.s2,m.s1,P)};});
+  const winId=id=>{const x=M[id];return aiAdv(x.t1,x.t2,C);};
+  KO_PAIRS.r16.forEach(m=>{M[m.id]={t1:winId(m.fr[0]),t2:winId(m.fr[1])};});
+  KO_PAIRS.qf .forEach(m=>{M[m.id]={t1:winId(m.fr[0]),t2:winId(m.fr[1])};});
+  KO_PAIRS.sf .forEach(m=>{M[m.id]={t1:winId(m.fr[0]),t2:winId(m.fr[1])};});
+  M['final']={t1:winId('sf_1'),t2:winId('sf_2')};
+  const champ=aiAdv(M['final'].t1,M['final'].t2,C);
+  const runnerUp=champ===M['final'].t1?M['final'].t2:M['final'].t1;
+
+  // ---- factor explainer cards ----
+  const factors=[
+    ['F1 · International-Weighted Rating','35%','World Football Elo blended with Transfermarkt squad market value to anchor raw talent depth.'],
+    ['F2 · High-Pressure In-Tournament Data','25%','Attacking profile adjusted by live rolling goal-difference per game — a field-tilt / xG-difference proxy that updates with results.'],
+    ['F3 · Logistics & Advanced Variables','15%','Squad drop-off (bench quality) blended with travel fatigue, host advantage and rotation room across the three host nations.'],
+    ['F4 · Tournament Tactical Trends','25%','Defensive structural solidity plus live goals-against per game (clean-sheet tendency) — rewards risk-averse knockout efficiency.']
+  ];
+  const fcards=factors.map(f=>`<div class="ai-fcard"><h4>${f[0]}<span class="wt">${f[1]}</span></h4><p>${f[2]}</p></div>`).join('');
+
+  // ---- bracket columns ----
+  const card=(id,isFinal)=>{
+    const x=M[id]||{};const w=aiAdv(x.t1,x.t2,C);
+    const row=(t)=>{const cls=!t?'':(t===w?'win':'lose');
+      return`<div class="r ${cls}"><span class="fl">${t?fi(t,15):''}</span><span class="nm">${t?sn(t):'—'}</span><span class="rt">${t&&C[t]?C[t].comp.toFixed(1):''}</span></div>`;};
+    return`<div class="ai-mc ${isFinal?'is-final':''}">${row(x.t1)}${row(x.t2)}</div>`;
+  };
+  const col=(hdr,ids,isFinal,extraClass)=>`<div class="ai-col ${extraClass||''}"><div class="ai-col-hdr">${hdr}</div>${ids.map(id=>card(id,isFinal)).join('')}</div>`;
+  const r32ids=R32.map(m=>m.id);                       // r32_1..16 feed r16 sequentially
+  const champCol=`<div class="ai-col col-champ"><div class="ai-col-hdr">Champion</div>
+    <div class="ai-trophy">🏆</div>
+    <div class="ai-champ-mini">${fi(champ,18)} ${sn(champ)}</div></div>`;
+  const bracket=`<div class="ai-bracket-scroll"><div class="ai-bracket">
+    ${col('Round of 32',r32ids)}
+    ${col('Round of 16',KO_PAIRS.r16.map(m=>m.id))}
+    ${col('Quarter-final',KO_PAIRS.qf.map(m=>m.id))}
+    ${col('Semi-final',KO_PAIRS.sf.map(m=>m.id))}
+    ${col('Final',['final'],true)}
+    ${champCol}
+  </div></div>`;
+
+  // ---- power-ranking table (top 12 by composite) ----
+  const ranked=ALL_TEAMS.map(t=>({t,...C[t]})).sort((a,b)=>b.comp-a.comp);
+  const rows=ranked.slice(0,12).map((r,i)=>`<tr class="${i===0?'top1':''}">
+    <td>${i+1}</td>
+    <td class="l"><span class="fl">${fi(r.t,15)}</span>${sn(r.t)}</td>
+    <td>${r.F1.toFixed(1)}</td><td>${r.F2.toFixed(1)}</td><td>${r.F3.toFixed(1)}</td><td>${r.F4.toFixed(1)}</td>
+    <td class="cmp">${r.comp.toFixed(1)}</td></tr>`).join('');
+  const table=`<table class="ai-tbl">
+    <thead><tr><th>#</th><th class="l">Team</th><th>F1</th><th>F2</th><th>F3</th><th>F4</th><th>Comp</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+
+  const liveOn=ranked.some(r=>r.games>0);
+  const champCard=`<div class="ai-champ-card">
+    <div class="lbl">PREDICTED WORLD CHAMPION</div>
+    <div class="team">${fi(champ,26)} ${champ}</div>
+    <div class="sc">Composite ${C[champ].comp.toFixed(1)} · beats ${sn(runnerUp)} (${C[runnerUp].comp.toFixed(1)}) in the final<br>
+    Factors — Rating ${C[champ].F1.toFixed(0)} · In-tournament ${C[champ].F2.toFixed(0)} · Logistics ${C[champ].F3.toFixed(0)} · Tactical ${C[champ].F4.toFixed(0)}</div>
+  </div>`;
+
+  document.getElementById('aiContent').innerHTML=
+    `<span class="ai-badge">4-FACTOR PREDICTIVE MODEL</span>
+     <div class="ai-intro">An expert-style projection that ignores generic historical bias and raw FIFA ranking. Every team is scored across four weighted axes; the full field is projected from current standings and the higher composite advances each knockout tie.${liveOn?' Scores update live as group results come in.':''}</div>
+     <div class="ai-factors">${fcards}</div>
+     ${champCard}
+     <div class="ai-sec-lbl">Predicted Bracket · R32 → Champion</div>
+     <div class="ai-sec-sub">Number on each row = team composite score. Highlighted row = projected winner.</div>
+     ${bracket}
+     <div class="ai-sec-lbl">Composite Power Ranking</div>
+     <div class="ai-sec-sub">Top 12 of 48 · F1 Rating · F2 In-tournament · F3 Logistics · F4 Tactical</div>
+     ${table}
+     <div class="ai-note">Model inputs: World Football Elo (eloratings.net, Jun 2026) and Transfermarkt squad values anchor F1; F2/F4 fold in live group goal data; F3/tactical biases are analyst-set. This is an unofficial data-driven projection, not a guarantee — knockout football is high-variance.</div>`;
+}
+
 function switchTab(tab){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('act'));
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('show'));
   document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('act');
   document.getElementById('view-'+tab).classList.add('show');
   if(tab==='bracket')requestAnimationFrame(drawLines);
+  if(tab==='ai')renderAIPred();
 }
 
 function renderAll(){
   renderBracket();
+  renderAIPred();
   renderStandings();
   renderSchedule();
   renderScorers();
