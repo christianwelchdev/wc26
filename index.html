@@ -495,7 +495,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     <div class="sec-div-lbl">🏆 FIFA WORLD CUP 2026 · BRACKET</div>
     <div class="sec-div-line"></div>
   </div>
-  <div class="bracket-note">⚡ The full bracket auto-fills from live standings — <i>italic</i> names are projected (knockout rounds assume the higher-ranked team advances) and update as results change.</div>
+  <div class="bracket-note">⚡ The bracket fills in from actual results only — group slots appear once a group is fully played, and knockout slots once each match is decided. No projections.</div>
   <div class="bracket-scroll">
     <div style="position:relative;padding-top:24px">
       <div class="bracket-inner" id="bInner"></div>
@@ -1058,12 +1058,12 @@ function resolveSlot(slot,hostSeed){
   const dm=slot.match(/^([123])([A-L])$/);
   if(dm){
     const p=parseInt(dm[1])-1,g=dm[2];
-    if(!groupStarted(g))return null;            // project from current standings once the group kicks off
+    if(!groupComplete(g))return null;           // only fill in once the group is actually finished
     return standings(g)[p]?.team||null;
   }
   const tm=slot.match(/^3\(([A-L]+)\)$/);
   if(tm){
-    if(!allGroupsStarted())return null;         // project thirds once every group has started
+    if(!allGroupsComplete())return null;        // only fill thirds once all groups are finished
     const top8=bestThirds().slice(0,8).map(t=>t.g).sort().join('');
     const asg=ANNEX[top8];if(!asg)return null;
     const host=(hostSeed||'').replace(/^1/,'');// '1E' → 'E'
@@ -1097,8 +1097,8 @@ function buildBracket(){
   // group-stage strength map for projecting knockout winners
   const STR={};Object.values(allSt()).forEach(arr=>arr.forEach(t=>{STR[t.team]={pts:t.pts,gd:t.gd,gf:t.gf};}));
   const stronger=(a,b)=>{if(!a)return b;if(!b)return a;const A=STR[a]||{pts:-1,gd:0,gf:0},Bb=STR[b]||{pts:-1,gd:0,gf:0};if(A.pts!==Bb.pts)return A.pts>Bb.pts?a:b;if(A.gd!==Bb.gd)return A.gd>Bb.gd?a:b;if(A.gf!==Bb.gf)return A.gf>Bb.gf?a:b;return a<b?a:b;};
-  const advance=id=>{const b=B[id];if(!b)return{team:null,proj:false};const w=winOf(b);if(w)return{team:w,proj:false};if(b.t1&&b.t2)return{team:stronger(b.t1,b.t2),proj:true};return{team:null,proj:false};};
-  const eliminate=id=>{const b=B[id];if(!b)return{team:null,proj:false};const l=loseOf(b);if(l)return{team:l,proj:false};if(b.t1&&b.t2){const w=stronger(b.t1,b.t2);return{team:w===b.t1?b.t2:b.t1,proj:true};}return{team:null,proj:false};};
+  const advance=id=>{const b=B[id];if(!b)return{team:null,proj:false};return{team:winOf(b),proj:false};};       // actual winner only — no projection
+  const eliminate=id=>{const b=B[id];if(!b)return{team:null,proj:false};return{team:loseOf(b),proj:false};};   // actual loser only — no projection
 
   R32.forEach(m=>{
     const s=sc(m.id);
