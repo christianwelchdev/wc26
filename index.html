@@ -1860,12 +1860,29 @@ const AI_LOGI_BASE={HOST:80,CONCACAF:66,CONMEBOL:61,UEFA:53,CAF:49,AFC:47,OFC:43
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 
 // Compute the 4 factor scores + composite for every team (live data folded in)
+// Live Elo: drift each team's seed rating across completed matches using the
+// World Football Elo formula (K=60 for World Cup; goal-margin multiplier G).
+function aiLiveElo(){
+  const R={};ALL_TEAMS.forEach(t=>R[t]=AI_ELO[t]||1600);
+  const played=GM.filter(m=>{const s=eff(m.id);return s&&s.s1!=null&&s.s2!=null;})
+    .sort((a,b)=>new Date(a.d+' 2026')-new Date(b.d+' 2026'));
+  const K=60;
+  played.forEach(m=>{
+    const s=eff(m.id),A=m.h,B=m.a;if(R[A]==null||R[B]==null)return;
+    const eA=1/(1+Math.pow(10,(R[B]-R[A])/400));        // expected result (neutral venue)
+    const gd=Math.abs(s.s1-s.s2);let G=1;if(gd===2)G=1.5;else if(gd>=3)G=(11+gd)/8;
+    const sA=s.s1>s.s2?1:s.s1<s.s2?0:0.5;
+    const delta=K*G*(sA-eA);R[A]+=delta;R[B]-=delta;     // Elo is zero-sum
+  });
+  return R;
+}
 function aiCompute(){
-  const elos=ALL_TEAMS.map(t=>AI_ELO[t]||1600);
+  const LIVE_ELO=aiLiveElo();
+  const elos=ALL_TEAMS.map(t=>LIVE_ELO[t]||1600);
   const lmvs=ALL_TEAMS.map(t=>Math.log(AI_MV[t]||10));
   const emin=Math.min(...elos),emax=Math.max(...elos);
   const lmin=Math.min(...lmvs),lmax=Math.max(...lmvs);
-  const nE=t=>((AI_ELO[t]||1600)-emin)/(emax-emin)*100;
+  const nE=t=>((LIVE_ELO[t]||1600)-emin)/(emax-emin)*100;
   const nM=t=>(Math.log(AI_MV[t]||10)-lmin)/(lmax-lmin)*100;
   // group→standings lookup for live form
   const ST={};Object.keys(GRP).forEach(g=>{standings(g).forEach(r=>ST[r.team]={p:r.p,gd:r.gd,ga:r.ga});});
@@ -1886,7 +1903,7 @@ function aiCompute(){
     const F3=clamp(0.55*depth+0.45*logi,0,100);
     const F4=clamp(0.60*def+0.40*baseQ+defAdj,0,100);
     const comp=0.35*F1+0.25*F2+0.15*F3+0.25*F4;
-    C[t]={F1,F2,F3,F4,comp,games:s.p};
+    C[t]={F1,F2,F3,F4,comp,games:s.p,elo:LIVE_ELO[t]};
   });
   return C;
 }
@@ -1951,7 +1968,7 @@ function renderAIPred(){
 
   // ---- factor explainer cards ----
   const factors=[
-    ['F1 · International-Weighted Rating','35%','World Football Elo (Spain 2129, Argentina 2128, France 2084 — eloratings.net, late Jun 2026) blended with Transfermarkt squad value: France deepest at €1.52B, Argentina leaner at €807M.'],
+    ['F1 · International-Weighted Rating','35%','World Football Elo — live-adjusted after every result via the Elo formula (seeds: Spain 2129, Argentina 2128, France 2084) — blended with Transfermarkt squad value: France deepest at €1.52B, Argentina €807M.'],
     ['F2 · High-Pressure In-Tournament Data','25%','Attacking profile adjusted by live rolling goal-difference per game — a field-tilt / xG-difference proxy that updates every matchday.'],
     ['F3 · Logistics & Advanced Variables','15%','Squad drop-off (France has the smallest starter-to-bench gap; top-heavy sides are penalised) blended with travel, host advantage and group-path difficulty.'],
     ['F4 · Tournament Tactical Trends','25%','Defensive structural solidity plus live goals-against per game (clean-sheet tendency) — rewards the risk-averse efficiency that wins knockout ties.']
@@ -1984,10 +2001,11 @@ function renderAIPred(){
   const rows=ranked.slice(0,12).map((r,i)=>`<tr class="${i===0?'top1':''}">
     <td>${i+1}</td>
     <td class="l"><span class="fl">${fi(r.t,15)}</span>${sn(r.t)}</td>
+    <td>${Math.round(r.elo)}</td>
     <td>${r.F1.toFixed(1)}</td><td>${r.F2.toFixed(1)}</td><td>${r.F3.toFixed(1)}</td><td>${r.F4.toFixed(1)}</td>
     <td class="cmp">${r.comp.toFixed(1)}</td></tr>`).join('');
   const table=`<table class="ai-tbl">
-    <thead><tr><th>#</th><th class="l">Team</th><th>F1</th><th>F2</th><th>F3</th><th>F4</th><th>Comp</th></tr></thead>
+    <thead><tr><th>#</th><th class="l">Team</th><th>Elo</th><th>F1</th><th>F2</th><th>F3</th><th>F4</th><th>Comp</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
 
   const liveOn=ranked.some(r=>r.games>0);
@@ -2014,9 +2032,9 @@ function renderAIPred(){
      <div class="ai-sec-sub">Number on each row = team composite score. Highlighted row = projected winner.</div>
      ${bracket}
      <div class="ai-sec-lbl">Composite Power Ranking</div>
-     <div class="ai-sec-sub">Top 12 of 48 · F1 Rating · F2 In-tournament · F3 Logistics · F4 Tactical</div>
+     <div class="ai-sec-sub">Top 12 of 48 · live Elo · F1 Rating · F2 In-tournament · F3 Logistics · F4 Tactical</div>
      ${table}
-     <div class="ai-note">Model inputs: World Football Elo (eloratings.net, Jun 2026) and Transfermarkt squad values anchor F1; F2/F4 fold in live group goal data; F3/tactical biases are analyst-set. Cross-checked against the Opta supercomputer, which also makes Spain the single most likely champion. This is an unofficial data-driven projection, not a guarantee — knockout football is high-variance.</div>`;
+     <div class="ai-note">Model inputs: World Football Elo (eloratings.net, Jun 2026) and Transfermarkt squad values anchor F1; F2/F4 fold in live group goal data; F3/tactical biases are analyst-set. Elo seeds drift live as results come in (World Cup K=60), so the whole projection re-rates itself each matchday. Cross-checked against the Opta supercomputer, which also makes Spain the single most likely champion. This is an unofficial data-driven projection, not a guarantee — knockout football is high-variance.</div>`;
 }
 
 function switchTab(tab){
