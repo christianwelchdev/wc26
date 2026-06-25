@@ -424,8 +424,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .ai-bracket-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding:6px 2px 14px}
 .ai-bracket{display:flex;min-width:1020px;align-items:stretch}
 .ai-col{display:flex;flex-direction:column;flex:0 0 174px;padding:0 7px}
-.ai-col.col-champ{justify-content:center;flex:0 0 188px}
+.ai-col.col-champ{flex:0 0 188px}
 .ai-col-body{flex:1;display:flex;flex-direction:column;justify-content:space-around;min-height:0}
+.ai-col-body.champ-body{justify-content:center;position:relative}
+.champ-body .ai-trophy{position:absolute;left:0;right:0;bottom:calc(50% + 18px);margin:0}
 .ai-col-hdr{font-size:9px;letter-spacing:1.5px;color:#4a4a66;text-transform:uppercase;text-align:center;margin-bottom:6px;font-weight:700}
 .ai-mc{background:var(--card2);border:1px solid var(--border);border-radius:6px;overflow:hidden;margin:5px 0}
 .ai-mc.is-final{border-color:rgba(245,166,35,.5)}
@@ -1986,8 +1988,10 @@ function renderAIPred(){
   const col=(hdr,ids,isFinal,extraClass)=>`<div class="ai-col ${extraClass||''}"><div class="ai-col-hdr">${hdr}</div><div class="ai-col-body">${ids.map(id=>card(id,isFinal)).join('')}</div></div>`;
   const r32ids=R32.map(m=>m.id);                       // r32_1..16 feed r16 sequentially
   const champCol=`<div class="ai-col col-champ"><div class="ai-col-hdr">Champion</div>
-    <div class="ai-trophy">🏆</div>
-    <div class="ai-champ-mini">${fi(champ,18)} ${sn(champ)}</div></div>`;
+    <div class="ai-col-body champ-body">
+      <div class="ai-trophy">🏆</div>
+      <div class="ai-champ-mini">${fi(champ,18)} ${sn(champ)}</div>
+    </div></div>`;
   const bracket=`<div class="ai-bracket-scroll"><div class="ai-bracket">
     ${col('Round of 32',r32ids)}
     ${col('Round of 16',KO_PAIRS.r16.map(m=>m.id))}
